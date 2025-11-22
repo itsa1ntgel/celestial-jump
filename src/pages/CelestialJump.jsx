@@ -7,22 +7,109 @@ export default function CelestialJump() {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+
   const gameStateRef = useRef(null);
   const isGameOverRef = useRef(false);
 
-  // 现在只用：BGM + 踩怪物 + game over 音效
-  const soundsRef = useRef({
-    bgm: null,
-    jumpOnMonster: [],
-    gameOver: null
-  });
-
+  // ---- 只保留这两个音效：BGM + 踩怪 ----
+  const BGM_VOLUME = 0.4;
+  const bgmRef = useRef(null);
+  const bgmStartedRef = useRef(false);
+  const bgmFadeIntervalRef = useRef(null);
+  const stompPoolRef = useRef(null);
   const lastMonsterSoundRef = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // ========= 工具函数：音效池 =========
+    const createAudioPool = (path, volume = 1, poolSize = 3) => {
+      const pool = Array.from({ length: poolSize }, () => {
+        const audio = new Audio(path);
+        audio.volume = volume;
+        audio.preload = 'auto';
+        return audio;
+      });
+
+      let index = 0;
+      const play = () => {
+        const audio = pool[index];
+        index = (index + 1) % pool.length;
+        try {
+          audio.currentTime = 0;
+          audio.play().catch(() => {});
+        } catch (e) {}
+      };
+
+      return { pool, play };
+    };
+
+    // ========= BGM：只创建，不自动播放 =========
+    const bgm = new Audio('/sounds/backgroundmusic_iceice.mp3');
+    bgm.loop = true;
+    bgm.volume = BGM_VOLUME;
+    bgm.preload = 'auto';
+    bgmRef.current = bgm;
+
+    // ========= 踩怪音效（808） =========
+    stompPoolRef.current = createAudioPool(
+      '/sounds/jump_on_monsters_sound_808.mp3',
+      0.55,
+      4
+    );
+
+    const startBgmIfNeeded = () => {
+      const audio = bgmRef.current;
+      if (!audio || bgmStartedRef.current) return;
+
+      bgmStartedRef.current = true;
+      audio.currentTime = 0;
+      audio.volume = BGM_VOLUME;
+      audio.play().catch(() => {
+        // 如果失败，下次再尝试
+        bgmStartedRef.current = false;
+      });
+    };
+
+    const fadeOutBgm = (durationMs = 500) => {
+      const audio = bgmRef.current;
+      if (!audio || !bgmStartedRef.current) return;
+
+      if (bgmFadeIntervalRef.current) {
+        clearInterval(bgmFadeIntervalRef.current);
+      }
+
+      const steps = 10;
+      const stepDuration = durationMs / steps;
+      let currentStep = 0;
+
+      bgmFadeIntervalRef.current = setInterval(() => {
+        currentStep += 1;
+        const factor = 1 - currentStep / steps;
+        audio.volume = Math.max(BGM_VOLUME * factor, 0);
+
+        if (currentStep >= steps) {
+          clearInterval(bgmFadeIntervalRef.current);
+          bgmFadeIntervalRef.current = null;
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = BGM_VOLUME;
+          bgmStartedRef.current = false;
+        }
+      }, stepDuration);
+    };
+
+    const playStompSound = () => {
+      const pool = stompPoolRef.current;
+      if (!pool) return;
+      const now = performance.now();
+      if (now - lastMonsterSoundRef.current < 80) return; // 简单冷却
+      lastMonsterSoundRef.current = now;
+      pool.play();
+    };
+
+    // ========= Canvas / 游戏逻辑 =========
     const ctx = canvas.getContext('2d');
     const dpr = Math.min(window.devicePixelRatio || 1, 1.8);
 
@@ -36,127 +123,15 @@ export default function CelestialJump() {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // ========= 音效相关 =========
-    const createAudioPool = (path, volume = 1, poolSize = 3) => {
-      const pool = Array.from({ length: poolSize }, () => {
-        const audio = new Audio(path);
-        audio.volume = volume;
-        audio.preload = 'auto';
-        return audio;
-      });
-
-      let index = 0;
-
-      const play = () => {
-        const audio = pool[index];
-        index = (index + 1) % pool.length;
-        try {
-          audio.currentTime = 0;
-          audio.play().catch(() => {});
-        } catch {
-          // 忽略错误，防止卡顿
-        }
-      };
-
-      return { pool, play };
-    };
-
-    // BGM
-    const BGM_VOLUME = 0.45;
-    let bgmFadeIntervalId = null;
-    const bgmAudio = new Audio('/sounds/backgroundmusic_iceice.mp3');
-    bgmAudio.loop = true;
-    bgmAudio.volume = BGM_VOLUME;
-    bgmAudio.preload = 'auto';
-
-    const startBgm = () => {
-      if (!bgmAudio) return;
-      if (bgmFadeIntervalId) {
-        clearInterval(bgmFadeIntervalId);
-        bgmFadeIntervalId = null;
-      }
-      bgmAudio.volume = BGM_VOLUME;
-      bgmAudio.play().catch(() => {});
-    };
-
-    const fadeOutBgm = () => {
-      if (!bgmAudio) return;
-      if (bgmFadeIntervalId) clearInterval(bgmFadeIntervalId);
-
-      const duration = 500; // 0.5s
-      const steps = 20;
-      const stepTime = duration / steps;
-      let currentStep = 0;
-      const startVolume = bgmAudio.volume;
-
-      bgmFadeIntervalId = window.setInterval(() => {
-        currentStep += 1;
-        const progress = currentStep / steps;
-        const newVolume = startVolume * (1 - progress);
-
-        if (newVolume <= 0) {
-          bgmAudio.volume = 0;
-          bgmAudio.pause();
-          bgmAudio.currentTime = 0;
-          clearInterval(bgmFadeIntervalId);
-          bgmFadeIntervalId = null;
-          bgmAudio.volume = BGM_VOLUME; // 为下次游戏重置音量
-        } else {
-          bgmAudio.volume = newVolume;
-        }
-      }, stepTime);
-    };
-
-    // 尝试自动开始 BGM（可能会被浏览器拦截），后面在按键 / 触摸时再补一刀
-    bgmAudio.play().catch(() => {});
-    soundsRef.current.bgm = bgmAudio;
-
-    // 踩怪物音效（带权重：808 50%，其他平均 50%）
-    const monsterPools = [
-      { pool: createAudioPool('/sounds/jump_on_monsters_sound_808.mp3', 0.55, 3), weight: 0.5 },
-      { pool: createAudioPool('/sounds/jump_on_monsters_sound_CHH.mp3', 0.4, 2), weight: 0.125 },
-      { pool: createAudioPool('/sounds/jump_on_monsters_sound_OHH.mp3', 0.4, 2), weight: 0.125 },
-      { pool: createAudioPool('/sounds/jump_on_monsters_sound_laser.mp3', 0.4, 2), weight: 0.125 },
-      { pool: createAudioPool('/sounds/jump_on_monsters_sound_snare.mp3', 0.4, 2), weight: 0.125 },
-    ];
-
-    const gameOverPool = createAudioPool('/sounds/game_over_sound_kyu.mp3', 0.5, 2);
-
-    soundsRef.current.jumpOnMonster = monsterPools;
-    soundsRef.current.gameOver = gameOverPool;
-
-    const now = () => performance.now();
-
-    const playWeightedMonsterSound = () => {
-      if (!monsterPools.length) return;
-
-      const t = now();
-      if (t - lastMonsterSoundRef.current < 80) return; // 80ms 冷却
-      lastMonsterSoundRef.current = t;
-
-      const r = Math.random();
-      let acc = 0;
-      for (const { pool, weight } of monsterPools) {
-        acc += weight;
-        if (r <= acc) {
-          pool.play();
-          return;
-        }
-      }
-      monsterPools[0].pool.play();
-    };
-
-    const playGameOverSound = () => {
-      gameOverPool.play();
-    };
-
-    // ========= 游戏常量 =========
     const GRAVITY = 0.2;
     const JUMP_FORCE = -10.5;
     const PLAYER_SIZE = 30;
     const PLATFORM_WIDTH = 80;
     const PLATFORM_HEIGHT = 12;
     const FINAL_SCORE = 50000;
+    const MIN_HORIZONTAL_GAP = 12;
+    const MIN_VERTICAL_GAP = 35;
+    const SPAWN_BUFFER_Y = -200;
 
     const player = {
       x: canvas.width / (2 * dpr) - PLAYER_SIZE / 2,
@@ -172,10 +147,6 @@ export default function CelestialJump() {
     const icePlatforms = new Set();
     let cameraY = 0;
     let finalPlateauReached = false;
-
-    const MIN_HORIZONTAL_GAP = 12;
-    const MIN_VERTICAL_GAP = 35;
-    const SPAWN_BUFFER_Y = -200;
 
     const isTooCloseToExistingPlatforms = (x, y) => {
       for (const p of platforms) {
@@ -290,7 +261,11 @@ export default function CelestialJump() {
             height: 50,
             type: isChinese ? 'chinese' : 'fluffy',
             char: selectedChar,
-            color: isChinese ? '#fff' : Math.random() > 0.5 ? '#e0f2fe' : '#fff',
+            color: isChinese
+              ? '#fff'
+              : Math.random() > 0.5
+              ? '#e0f2fe'
+              : '#fff',
             bobOffset: Math.random() * Math.PI * 2,
             rotation: Math.random() * Math.PI * 2
           });
@@ -301,19 +276,13 @@ export default function CelestialJump() {
     initPlatforms();
     initMonsters();
 
-    // ========= 控制 =========
     const keys = {};
     let touchStartX = 0;
     let touchX = 0;
 
-    const handleUserInteraction = () => {
-      // 任意按键 / 触摸时补一次 BGM 启动，绕过浏览器静音限制
-      startBgm();
-    };
-
     const handleKeyDown = (e) => {
+      startBgmIfNeeded();
       keys[e.key] = true;
-      handleUserInteraction();
     };
 
     const handleKeyUp = (e) => {
@@ -321,9 +290,9 @@ export default function CelestialJump() {
     };
 
     const handleTouchStart = (e) => {
+      startBgmIfNeeded();
       touchStartX = e.touches[0].clientX;
       touchX = e.touches[0].clientX;
-      handleUserInteraction();
     };
 
     const handleTouchMove = (e) => {
@@ -346,7 +315,14 @@ export default function CelestialJump() {
       ctx.translate(x, y);
       ctx.rotate(rotation);
 
-      const gradient = ctx.createRadialGradient(0, 0, size * 0.3, 0, 0, size * 1.5);
+      const gradient = ctx.createRadialGradient(
+        0,
+        0,
+        size * 0.3,
+        0,
+        0,
+        size * 1.5
+      );
       gradient.addColorStop(0, 'rgba(192, 192, 192, 0.3)');
       gradient.addColorStop(0.5, 'rgba(192, 192, 192, 0.1)');
       gradient.addColorStop(1, 'rgba(192, 192, 192, 0)');
@@ -362,7 +338,7 @@ export default function CelestialJump() {
       ctx.beginPath();
 
       for (let i = 0; i < 5; i++) {
-        const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+        const angle = ((Math.PI * 2 * i) / 5) - Math.PI / 2;
         const px = Math.cos(angle) * size;
         const py = Math.sin(angle) * size;
 
@@ -398,7 +374,6 @@ export default function CelestialJump() {
         gradient.addColorStop(0, 'rgba(224, 242, 254, 0.9)');
         gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.95)');
         gradient.addColorStop(1, 'rgba(224, 242, 254, 0.9)');
-
         ctx.fillStyle = gradient;
         ctx.strokeStyle = 'rgba(186, 230, 253, 0.8)';
       } else {
@@ -411,20 +386,13 @@ export default function CelestialJump() {
         gradient.addColorStop(0, '#e5e5e5');
         gradient.addColorStop(0.5, '#ffffff');
         gradient.addColorStop(1, '#d4d4d4');
-
         ctx.fillStyle = gradient;
         ctx.strokeStyle = '#a3a3a3';
       }
 
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(
-        platform.x,
-        platform.y,
-        platform.width,
-        platform.height,
-        6
-      );
+      ctx.roundRect(platform.x, platform.y, platform.width, platform.height, 6);
       ctx.fill();
       ctx.stroke();
 
@@ -480,7 +448,7 @@ export default function CelestialJump() {
 
       ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
       for (let i = 0; i < 8; i++) {
-        const angle = (Math.PI * 2 * i) / 8 + time * 0.001;
+        const angle = ((Math.PI * 2 * i) / 8) + time * 0.001;
         const distance = 28 + Math.sin(time * 0.002 + i) * 4;
         const flakeX = Math.cos(angle) * distance;
         const flakeY = Math.sin(angle) * distance;
@@ -491,7 +459,7 @@ export default function CelestialJump() {
       }
 
       for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI * 2 * i) / 6;
+        const angle = ((Math.PI * 2 * i) / 6);
         const offsetX = Math.cos(angle) * 18;
         const offsetY = Math.sin(angle) * 18;
 
@@ -505,7 +473,6 @@ export default function CelestialJump() {
         );
         fluffGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
         fluffGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
         ctx.fillStyle = fluffGradient;
         ctx.beginPath();
         ctx.arc(offsetX, offsetY, 12, 0, Math.PI * 2);
@@ -516,7 +483,6 @@ export default function CelestialJump() {
       centerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
       centerGradient.addColorStop(0.5, 'rgba(245, 245, 245, 0.7)');
       centerGradient.addColorStop(1, 'rgba(200, 200, 200, 0)');
-
       ctx.fillStyle = centerGradient;
       ctx.beginPath();
       ctx.arc(0, 0, 25, 0, Math.PI * 2);
@@ -544,54 +510,12 @@ export default function CelestialJump() {
       ctx.shadowColor = 'transparent';
     };
 
-    // ========= 游戏循环 =========
+    // ========= 主循环 =========
     let animationId = null;
     let currentScore = 0;
     let lastTime = 0;
     const FIXED_TIMESTEP = 1000 / 60;
     let accumulator = 0;
-
-    const handleGameOver = () => {
-      if (isGameOverRef.current) return;
-      isGameOverRef.current = true;
-      setGameOver(true);
-      setHighScore((prev) => Math.max(prev, Math.floor(currentScore)));
-      fadeOutBgm();
-      playGameOverSound();
-
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-        animationId = null;
-      }
-    };
-
-    const gameLoop = (time) => {
-      if (isGameOverRef.current) {
-        if (animationId) {
-          cancelAnimationFrame(animationId);
-          animationId = null;
-        }
-        return;
-      }
-
-      const deltaTime = time - lastTime;
-      lastTime = time;
-      accumulator += deltaTime;
-
-      if (accumulator > 200) {
-        accumulator = FIXED_TIMESTEP;
-      }
-
-      while (accumulator >= FIXED_TIMESTEP && !isGameOverRef.current) {
-        updateGame(time);
-        accumulator -= FIXED_TIMESTEP;
-      }
-
-      if (!isGameOverRef.current) {
-        renderGame(time);
-        animationId = requestAnimationFrame(gameLoop);
-      }
-    };
 
     const updateGame = (time) => {
       const width = canvas.width / dpr;
@@ -637,6 +561,7 @@ export default function CelestialJump() {
         }
       }
 
+      // 相机 / 计分
       let justReachedFinal = false;
 
       if (
@@ -702,13 +627,9 @@ export default function CelestialJump() {
       }
 
       let maxMonsters = 1;
-      if (currentScore >= 20000) {
-        maxMonsters = 4;
-      } else if (currentScore >= 10000) {
-        maxMonsters = 3;
-      } else if (currentScore >= 5000) {
-        maxMonsters = 2;
-      }
+      if (currentScore >= 20000) maxMonsters = 4;
+      else if (currentScore >= 10000) maxMonsters = 3;
+      else if (currentScore >= 5000) maxMonsters = 2;
 
       if (
         Math.random() > 0.99 &&
@@ -720,7 +641,6 @@ export default function CelestialJump() {
           (min, p) => (p.y < min ? p.y : min),
           Infinity
         );
-
         const spawnY = highestY - 120;
 
         if (spawnY <= SPAWN_BUFFER_Y - 40) {
@@ -760,10 +680,15 @@ export default function CelestialJump() {
                 (m) => m.type === 'fluffy' && longFluffyChars.includes(m.char)
               ).length;
 
-              if (longFluffyChars.includes(selectedChar) && currentLongCount >= 2) {
+              if (
+                longFluffyChars.includes(selectedChar) &&
+                currentLongCount >= 2
+              ) {
                 const shortFluffyChars = fluffyChars.slice(0, 2);
                 selectedChar =
-                  shortFluffyChars[Math.floor(Math.random() * shortFluffyChars.length)];
+                  shortFluffyChars[
+                    Math.floor(Math.random() * shortFluffyChars.length)
+                  ];
               }
             }
 
@@ -774,7 +699,11 @@ export default function CelestialJump() {
               height: 50,
               type: isChinese ? 'chinese' : 'fluffy',
               char: selectedChar,
-              color: isChinese ? '#fff' : Math.random() > 0.5 ? '#e0f2fe' : '#fff',
+              color: isChinese
+                ? '#fff'
+                : Math.random() > 0.5
+                ? '#e0f2fe'
+                : '#fff',
               bobOffset: Math.random() * Math.PI * 2,
               rotation: Math.random() * Math.PI * 2
             });
@@ -814,9 +743,9 @@ export default function CelestialJump() {
           player.y < monster.y + monster.height
         ) {
           if (player.y + player.height <= monster.y + monster.height) {
-            // 从上方踩到怪物
+            // 从上方踩中怪物：跳起来 + 播放 stomp 音效
             player.velocityY = JUMP_FORCE;
-            playWeightedMonsterSound();
+            playStompSound();
 
             monsterShakes.set(monster, {
               startTime: time,
@@ -831,14 +760,33 @@ export default function CelestialJump() {
               }
             }, 100);
           } else {
-            handleGameOver();
+            // 被怪物撞死：Game Over + BGM 渐隐
+            isGameOverRef.current = true;
+            setGameOver(true);
+            fadeOutBgm(500);
+            if (currentScore > highScore) {
+              setHighScore(Math.floor(currentScore));
+            }
+            if (animationId) {
+              cancelAnimationFrame(animationId);
+              animationId = null;
+            }
             return;
           }
         }
       }
 
       if (player.y > height + 50) {
-        handleGameOver();
+        isGameOverRef.current = true;
+        setGameOver(true);
+        fadeOutBgm(500);
+        if (currentScore > highScore) {
+          setHighScore(Math.floor(currentScore));
+        }
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+          animationId = null;
+        }
       }
     };
 
@@ -853,10 +801,8 @@ export default function CelestialJump() {
         bgGradient.addColorStop(1, '#e2e8f0');
       } else if (currentScore < 40000) {
         const progress = (currentScore - 15000) / 25000;
-
         const topStart = { r: 248, g: 250, b: 252 };
         const topEnd = { r: 74, g: 26, b: 26 };
-
         const bottomStart = { r: 226, g: 232, b: 240 };
         const bottomEnd = { r: 92, g: 26, b: 26 };
 
@@ -864,9 +810,15 @@ export default function CelestialJump() {
         const g1 = Math.round(topStart.g + (topEnd.g - topStart.g) * progress);
         const b1 = Math.round(topStart.b + (topEnd.b - topStart.b) * progress);
 
-        const r2 = Math.round(bottomStart.r + (bottomEnd.r - bottomStart.r) * progress);
-        const g2 = Math.round(bottomStart.g + (bottomEnd.g - bottomStart.g) * progress);
-        const b2 = Math.round(bottomStart.b + (bottomEnd.b - bottomStart.b) * progress);
+        const r2 = Math.round(
+          bottomStart.r + (bottomEnd.r - bottomStart.r) * progress
+        );
+        const g2 = Math.round(
+          bottomStart.g + (bottomEnd.g - bottomStart.g) * progress
+        );
+        const b2 = Math.round(
+          bottomStart.b + (bottomEnd.b - bottomStart.b) * progress
+        );
 
         bgGradient.addColorStop(0, `rgb(${r1}, ${g1}, ${b1})`);
         bgGradient.addColorStop(1, `rgb(${r2}, ${g2}, ${b2})`);
@@ -925,7 +877,6 @@ export default function CelestialJump() {
               const shakeX = (Math.random() - 0.5) * intensity;
               const shakeY = (Math.random() - 0.5) * intensity;
               ctx.translate(shakeX, shakeY);
-
               ctx.globalAlpha = 1 - elapsed / shake.duration;
             }
           }
@@ -949,13 +900,50 @@ export default function CelestialJump() {
       );
     };
 
-    // ========= 暴露 restart =========
+    const gameLoop = (time) => {
+      if (isGameOverRef.current) {
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+          animationId = null;
+        }
+        return;
+      }
+
+      const deltaTime = time - lastTime;
+      lastTime = time;
+      accumulator += deltaTime;
+
+      if (accumulator > 200) accumulator = FIXED_TIMESTEP;
+
+      while (accumulator >= FIXED_TIMESTEP && !isGameOverRef.current) {
+        updateGame(time);
+        accumulator -= FIXED_TIMESTEP;
+      }
+
+      if (!isGameOverRef.current) {
+        renderGame(time);
+        animationId = requestAnimationFrame(gameLoop);
+      }
+    };
+
     gameStateRef.current = {
       restart: () => {
         if (animationId) {
           cancelAnimationFrame(animationId);
           animationId = null;
         }
+
+        // 重置 BGM（下次按键 / 触摸会重新开始）
+        if (bgmFadeIntervalRef.current) {
+          clearInterval(bgmFadeIntervalRef.current);
+          bgmFadeIntervalRef.current = null;
+        }
+        if (bgmRef.current) {
+          bgmRef.current.pause();
+          bgmRef.current.currentTime = 0;
+          bgmRef.current.volume = BGM_VOLUME;
+        }
+        bgmStartedRef.current = false;
 
         isGameOverRef.current = false;
         setGameOver(false);
@@ -966,7 +954,6 @@ export default function CelestialJump() {
         const height = canvas.height / dpr;
 
         cameraY = 0;
-        finalPlateauReached = false;
 
         player.x = width / 2 - PLAYER_SIZE / 2;
         player.y = height * 0.7;
@@ -980,8 +967,6 @@ export default function CelestialJump() {
         initPlatforms();
         initMonsters();
 
-        startBgm();
-
         setTimeout(() => {
           if (!isGameOverRef.current) {
             animationId = requestAnimationFrame(gameLoop);
@@ -990,9 +975,7 @@ export default function CelestialJump() {
       }
     };
 
-    // 启动循环 + BGM
     lastTime = performance.now();
-    startBgm();
     animationId = requestAnimationFrame(gameLoop);
 
     return () => {
@@ -1002,17 +985,18 @@ export default function CelestialJump() {
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
       canvas.removeEventListener('touchend', handleTouchEnd);
-      if (animationId) {
-        cancelAnimationFrame(animationId);
+      if (animationId) cancelAnimationFrame(animationId);
+
+      if (bgmFadeIntervalRef.current) {
+        clearInterval(bgmFadeIntervalRef.current);
+        bgmFadeIntervalRef.current = null;
       }
-      if (bgmFadeIntervalId) {
-        clearInterval(bgmFadeIntervalId);
-      }
-      if (bgmAudio) {
-        bgmAudio.pause();
+      if (bgmRef.current) {
+        bgmRef.current.pause();
+        bgmRef.current.currentTime = 0;
       }
     };
-  }, []);
+  }, [highScore]);
 
   const handleRestart = () => {
     if (gameStateRef.current) {
@@ -1024,8 +1008,8 @@ export default function CelestialJump() {
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-start pt-4 pb-4 overflow-hidden select-none">
       <div className="max-w-md w-full px-4">
         <div className="mb-4 text-center">
-          {/* Henny Penny 字体：记得在 <head> 里用 link 把字体引入 */}
-          <h1 className="text-4xl md:text-5xl font-normal tracking-[0.3em] text-gray-900 mb-2 font-['Henny_Penny',system-ui,sans-serif]">
+          {/* 之后改成 Henny Penny 字体可以在这里加 className 或 style */}
+          <h1 className="text-4xl font-light tracking-wider text-gray-800 mb-2">
             ✦ CELESTIAL JUMP ✦
           </h1>
         </div>
@@ -1063,18 +1047,18 @@ export default function CelestialJump() {
                 </div>
                 <h2 className="text-3xl font-light text-gray-800 tracking-wide">
                   {score < 500
-                    ? 'what are you even doing'
+                    ? 'are you retarded or sum?'
                     : score < 2000
                     ? "you can't be real"
                     : score < 5000
-                    ? 'not your smartest run'
+                    ? 'not so smart'
                     : score >= 40000
                     ? 'lets die in a beautiful winter'
                     : score >= 20000
-                    ? 'well done. now go get some rest gang'
+                    ? 'Well done. Now go get some rest gang'
                     : score >= 10000
-                    ? 'have you seen the snow?'
-                    : 'journey complete'}
+                    ? 'Have you seen the snow?'
+                    : 'Journey Complete'}
                 </h2>
 
                 <div className="space-y-2">
