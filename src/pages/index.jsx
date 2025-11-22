@@ -1,47 +1,46 @@
 import Layout from "./Layout.jsx";
-
 import CelestialJump from "./CelestialJump";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
-    
-    DoodleJump: DoodleJump,
-    
-}
+  CelestialJump: CelestialJump,
+};
 
 function _getCurrentPage(url) {
-    if (url.endsWith('/')) {
-        url = url.slice(0, -1);
-    }
-    let urlLastPart = url.split('/').pop();
-    if (urlLastPart.includes('?')) {
-        urlLastPart = urlLastPart.split('?')[0];
-    }
+  if (url.endsWith('/')) {
+    url = url.slice(0, -1);
+  }
+  let urlLastPart = url.split('/').pop();
+  if (urlLastPart.includes('?')) {
+    urlLastPart = urlLastPart.split('?')[0];
+  }
 
-    const pageName = Object.keys(PAGES).find(page => page.toLowerCase() === urlLastPart.toLowerCase());
-    return pageName || Object.keys(PAGES)[0];
+  const pageName = Object.keys(PAGES).find(
+    (page) => page.toLowerCase() === urlLastPart.toLowerCase()
+  );
+  return pageName || Object.keys(PAGES)[0];
 }
 
 // Create a wrapper component that uses useLocation inside the Router context
 function PagesContent() {
-    const location = useLocation();
-    const currentPage = _getCurrentPage(location.pathname);
-    
-    return (
-        <Layout currentPageName={currentPage}>
-            <Routes>            
-                
-                    <Route path="/" element={<DoodleJump />} />
-                
-                
-                <Route path="/DoodleJump" element={<DoodleJump />} />
-                
-            </Routes>
-        </Layout>
-    );
+  const location = useLocation();
+  const currentPage = _getCurrentPage(location.pathname);
+
+  return (
+    <Layout currentPageName={currentPage}>
+      <Routes>
+        <Route path="/" element={<CelestialJump />} />
+        <Route path="/CelestialJump" element={<CelestialJump />} />
+      </Routes>
+    </Layout>
+  );
 }
 
-export default function IndexPage() {
-  return <CelestialJump />;
+export default function Pages() {
+  return (
+    <Router>
+      <PagesContent />
+    </Router>
+  );
 }
