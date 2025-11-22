@@ -1009,9 +1009,9 @@ export default function CelestialJump() {
       <div className="max-w-md w-full px-4">
         <div className="mb-4 text-center">
           {/* 之后改成 Henny Penny 字体可以在这里加 className 或 style */}
-          <h1 className="text-4xl font-light tracking-wider text-gray-800 mb-2">
-            ✦ CELESTIAL JUMP ✦
-          </h1>
+        <h1 className="font-henny-penny text-4xl font-light tracking-wider text-gray-800 mb-2">
+          ✦ CELESTIAL JUMP ✦
+        </h1>
         </div>
 
         <div className="flex justify-between items-center mb-4 px-6">
