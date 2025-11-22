@@ -21,100 +21,99 @@ export default function CelestialJump() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // ========= 音效初始化 =========
-    const createAudio = (path, volume = 1) => {
-      const audio = new Audio(path);
-      audio.volume = volume;
-      audio.preload = 'auto';
-      return audio;
-    };
-    // 智能播放：如果这个 audio 正在播，就 clone 一份；否则复用原来的
-    const safePlay = (audio) => {
-      if (!audio) return;
-      try {
-        const target = audio.paused ? audio : audio.cloneNode();
-        target.currentTime = 0;
-        target.play().catch(() => {});
-      } catch (e) {
-        // 静默失败，避免报错卡顿
-      }
+    // ========= 音效初始化：使用音效池（Audio Pool），不在运行时 clone =========
+    const createAudioPool = (path, volume = 1, poolSize = 3) => {
+      const pool = Array.from({ length: poolSize }, () => {
+        const audio = new Audio(path);
+        audio.volume = volume;
+        audio.preload = 'auto';
+        return audio;
+      });
+
+      let index = 0;
+
+      const play = () => {
+        const audio = pool[index];
+        index = (index + 1) % pool.length;
+        try {
+          audio.currentTime = 0;
+          audio.play().catch(() => {});
+        } catch (e) {
+          // 忽略播放失败，避免卡顿
+        }
+      };
+
+      return { pool, play };
     };
 
-    // 跳跃音效（平台）
-    const jumpSounds = [
-      createAudio('/sounds/jump_sound_1.mp3', 0.35),
-      createAudio('/sounds/jump_sound_2.mp3', 0.35),
-      createAudio('/sounds/jump_sound_3.mp3', 0.35),
-      createAudio('/sounds/jump_sound_4.mp3', 0.35),
-      createAudio('/sounds/jump_sound_5.mp3', 0.35),
-      createAudio('/sounds/jump_sound_6.mp3', 0.35),
+    // 跳跃音效（平台）—— 每种 3 个实例
+    const jumpPools = [
+      createAudioPool('/sounds/jump_sound_1.mp3', 0.35, 3),
+      createAudioPool('/sounds/jump_sound_2.mp3', 0.35, 3),
+      createAudioPool('/sounds/jump_sound_3.mp3', 0.35, 3),
+      createAudioPool('/sounds/jump_sound_4.mp3', 0.35, 3),
+      createAudioPool('/sounds/jump_sound_5.mp3', 0.35, 3),
+      createAudioPool('/sounds/jump_sound_6.mp3', 0.35, 3),
     ];
 
     // 踩怪物音效（带权重：808 50%，其他平均 50%）
-    const monsterSounds = [
-      { audio: createAudio('/sounds/jump_on_monsters_sound_808.mp3', 0.55), weight: 0.5 },
-      { audio: createAudio('/sounds/jump_on_monsters_sound_CHH.mp3', 0.4), weight: 0.125 },
-      { audio: createAudio('/sounds/jump_on_monsters_sound_OHH.mp3', 0.4), weight: 0.125 },
-      { audio: createAudio('/sounds/jump_on_monsters_sound_laser.mp3', 0.4), weight: 0.125 },
-      { audio: createAudio('/sounds/jump_on_monsters_sound_snare.mp3', 0.4), weight: 0.125 },
+    const monsterPools = [
+      { pool: createAudioPool('/sounds/jump_on_monsters_sound_808.mp3', 0.55, 3), weight: 0.5 },
+      { pool: createAudioPool('/sounds/jump_on_monsters_sound_CHH.mp3', 0.4, 2), weight: 0.125 },
+      { pool: createAudioPool('/sounds/jump_on_monsters_sound_OHH.mp3', 0.4, 2), weight: 0.125 },
+      { pool: createAudioPool('/sounds/jump_on_monsters_sound_laser.mp3', 0.4, 2), weight: 0.125 },
+      { pool: createAudioPool('/sounds/jump_on_monsters_sound_snare.mp3', 0.4, 2), weight: 0.125 },
     ];
 
-    // Game Over 音效
-    const gameOverAudio = createAudio('/sounds/game_over_sound_kyu.mp3', 0.5);
+    // Game Over 音效（2 个实例）
+    const gameOverPool = createAudioPool('/sounds/game_over_sound_kyu.mp3', 0.5, 2);
 
-    // 存进 ref，方便其它地方用
-    soundsRef.current.jump = jumpSounds;
-    soundsRef.current.jumpOnMonster = monsterSounds.map(m => m.audio);
-    soundsRef.current.gameOver = gameOverAudio;
+    // 如果你之后想从外面访问，也可以继续挂在 ref 上
+    soundsRef.current.jump = jumpPools;
+    soundsRef.current.jumpOnMonster = monsterPools;
+    soundsRef.current.gameOver = gameOverPool;
 
     const now = () => performance.now();
 
-    // 跳跃音效：稍微有一点冷却，防止一帧内连续多次触发同一个声
+    // 跳跃音效：冷却 40ms，保证连续跳也基本都有声
     const playJumpSound = () => {
-      const sounds = soundsRef.current.jump;
-      if (!sounds || !sounds.length) return;
-    
+      if (!jumpPools.length) return;
+
       const t = now();
-      if (t - lastJumpSoundRef.current < 50) return; // 原来是 80ms，可以调小一点
+      if (t - lastJumpSoundRef.current < 40) return;
       lastJumpSoundRef.current = t;
-    
-      const audio = sounds[Math.floor(Math.random() * sounds.length)];
-      safePlay(audio);
+
+      const pool = jumpPools[Math.floor(Math.random() * jumpPools.length)];
+      pool.play();
     };
 
+    // 踩怪物音效：808 50%，其他平均，80ms 冷却
+    const playWeightedMonsterSound = () => {
+      if (!monsterPools.length) return;
 
-// 踩怪物音效：808 50%，其他平均 50%，100ms 冷却
-const playWeightedMonsterSound = () => {
-  if (!monsterSounds.length) return;
+      const t = now();
+      if (t - lastMonsterSoundRef.current < 80) return;
+      lastMonsterSoundRef.current = t;
 
-  const t = now();
-  if (t - lastMonsterSoundRef.current < 80) return; // 略小于原来的 100ms
-  lastMonsterSoundRef.current = t;
+      const r = Math.random();
+      let acc = 0;
+      for (const { pool, weight } of monsterPools) {
+        acc += weight;
+        if (r <= acc) {
+          pool.play();
+          return;
+        }
+      }
 
-  const r = Math.random();
-  let acc = 0;
-  for (const { audio, weight } of monsterSounds) {
-    acc += weight;
-    if (r <= acc) {
-      safePlay(audio);
-      return;
-    }
-  }
-
-  // 兜底：万一浮点误差没命中
-  safePlay(monsterSounds[0].audio);
-};
-
+      // 浮点误差兜底
+      monsterPools[0].pool.play();
+    };
 
     // Game Over 音效
     const playGameOverSound = () => {
-      const audio = soundsRef.current.gameOver;
-      if (!audio) return;
-      try {
-        audio.currentTime = 0;
-        audio.play();
-      } catch (e) {}
+      gameOverPool.play();
     };
+
 
 
 const ctx = canvas.getContext('2d');
