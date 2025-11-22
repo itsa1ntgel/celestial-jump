@@ -1,6 +1,6 @@
 import Layout from "./Layout.jsx";
 
-import DoodleJump from "./DoodleJump";
+import CelestialJump from "./CelestialJump";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -42,10 +42,6 @@ function PagesContent() {
     );
 }
 
-export default function Pages() {
-    return (
-        <Router>
-            <PagesContent />
-        </Router>
-    );
+export default function IndexPage() {
+  return <CelestialJump />;
 }
