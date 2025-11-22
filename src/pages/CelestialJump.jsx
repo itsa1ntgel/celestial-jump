@@ -1005,28 +1005,18 @@ export default function CelestialJump() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-start pt-4 pb-4 overflow-hidden select-none">
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-start pt-2 pb-4 overflow-hidden select-none">
       <div className="max-w-md w-full px-4">
-        <div className="mb-4 text-center">
-          {/* 之后改成 Henny Penny 字体可以在这里加 className 或 style */}
-          <h1
-            className="
-              font-henny-penny
-              text-[2.1rem] md:text-[2.6rem]
-              tracking-[0.18em]
-              text-gray-800
-              mb-1
-              flex items-center justify-center gap-3
-            "
-          >
-            <span className="text-xl md:text-2xl">✦</span>
-            <span>CELESTIAL JUMP</span>
-            <span className="text-xl md:text-2xl">✦</span>
-          </h1>
+<div className="mt-1 mb-1 text-center">
+  <h1 className="font-[Henny_Penny] text-[1.9rem] md:text-[2.3rem] leading-tight tracking-[0.18em] text-slate-900">
+    CELESTIAL
+    <br />
+    JUMP
+  </h1>
+</div>
 
-        </div>
+        <div className="flex justify-between items-center mb-2 px-6">
 
-        <div className="flex justify-between items-center mb-4 px-6">
           <div className="text-center">
             <p className="text-xs font-light text-gray-500 tracking-wider uppercase mb-1">
               Score
