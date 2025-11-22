@@ -88,7 +88,6 @@ export default function CelestialJump() {
     const platforms = [];
     const icePlatforms = new Set();
     let cameraY = 0;
-    let cameraY = 0;
     let finalPlateauReached = false; // 是否已经到达最终休息区
 
     
