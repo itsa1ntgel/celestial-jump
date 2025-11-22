@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 
 export default function CelestialJump() {
   const canvasRef = useRef(null);
+  const snowCanvasRef = useRef(null);
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
@@ -16,12 +17,15 @@ export default function CelestialJump() {
   const bgmRef = useRef(null);
   const bgmStartedRef = useRef(false);
   const bgmFadeIntervalRef = useRef(null);
+  const startBgmIfNeededRef = useRef(() => {});
   const stompPoolRef = useRef(null);
   const lastMonsterSoundRef = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const snowCanvas = snowCanvasRef.current;
+    const snowCtx = snowCanvas?.getContext('2d');
 
     // ========= 工具函数：音效池 =========
     const createAudioPool = (path, volume = 1, poolSize = 3) => {
@@ -83,6 +87,8 @@ export default function CelestialJump() {
       }
     };
 
+    startBgmIfNeededRef.current = startBgmIfNeeded;
+
     // game over 时 0.5s 渐隐 BGM
     const fadeOutBgm = (durationMs = 500) => {
       const audio = bgmRef.current;
@@ -130,6 +136,12 @@ export default function CelestialJump() {
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if (snowCanvas && snowCtx) {
+        snowCanvas.width = window.innerWidth * dpr;
+        snowCanvas.height = window.innerHeight * dpr;
+        snowCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
     };
 
     resizeCanvas();
@@ -316,8 +328,16 @@ export default function CelestialJump() {
       touchX = 0;
     };
 
+    const handleGlobalInteraction = () => {
+      startBgmIfNeeded();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('pointerdown', handleGlobalInteraction, { once: false });
+    window.addEventListener('pointerup', handleGlobalInteraction, { once: false });
+    window.addEventListener('click', handleGlobalInteraction, { once: false });
+    window.addEventListener('touchstart', handleGlobalInteraction, { once: false });
     canvas.addEventListener('touchstart', handleTouchStart);
     canvas.addEventListener('touchmove', handleTouchMove);
     canvas.addEventListener('touchend', handleTouchEnd);
@@ -806,6 +826,8 @@ export default function CelestialJump() {
     const renderGame = (time) => {
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
+      const snowWidth = snowCanvas ? snowCanvas.width / dpr : width;
+      const snowHeight = snowCanvas ? snowCanvas.height / dpr : height;
 
       const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
 
@@ -843,32 +865,38 @@ export default function CelestialJump() {
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, width, height);
 
-      if (currentScore >= 10000) {
-        if (Math.random() < 0.03) {
-          snowflakes.push({
-            x: Math.random() * width,
-            y: -10,
-            speed: 0.5 + Math.random() * 1,
-            size: 2 + Math.random() * 2,
-            opacity: 0.3 + Math.random() * 0.4
-          });
-        }
+      if (snowCtx && snowCanvas) {
+        snowCtx.clearRect(0, 0, snowWidth, snowHeight);
 
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        for (let i = snowflakes.length - 1; i >= 0; i--) {
-          const flake = snowflakes[i];
-          flake.y += flake.speed;
-
-          ctx.globalAlpha = flake.opacity;
-          ctx.beginPath();
-          ctx.arc(flake.x, flake.y, flake.size, 0, Math.PI * 2);
-          ctx.fill();
-
-          if (flake.y > height) {
-            snowflakes.splice(i, 1);
+        if (currentScore >= 10000) {
+          if (Math.random() < 0.03) {
+            snowflakes.push({
+              x: Math.random() * snowWidth,
+              y: -20 - Math.random() * 30,
+              speed: 0.5 + Math.random() * 1,
+              size: 2 + Math.random() * 2,
+              opacity: 0.3 + Math.random() * 0.4
+            });
           }
+
+          snowCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          for (let i = snowflakes.length - 1; i >= 0; i--) {
+            const flake = snowflakes[i];
+            flake.y += flake.speed;
+
+            snowCtx.globalAlpha = flake.opacity;
+            snowCtx.beginPath();
+            snowCtx.arc(flake.x, flake.y, flake.size, 0, Math.PI * 2);
+            snowCtx.fill();
+
+            if (flake.y > snowHeight + 10) {
+              snowflakes.splice(i, 1);
+            }
+          }
+          snowCtx.globalAlpha = 1;
+        } else if (snowflakes.length) {
+          snowflakes.length = 0;
         }
-        ctx.globalAlpha = 1;
       }
 
       platforms.forEach((platform) => {
@@ -994,6 +1022,10 @@ export default function CelestialJump() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('pointerdown', handleGlobalInteraction);
+      window.removeEventListener('pointerup', handleGlobalInteraction);
+      window.removeEventListener('click', handleGlobalInteraction);
+      window.removeEventListener('touchstart', handleGlobalInteraction);
       window.removeEventListener('resize', resizeCanvas);
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
@@ -1008,66 +1040,62 @@ export default function CelestialJump() {
         bgmRef.current.pause();
         bgmRef.current.currentTime = 0;
       }
+
+      startBgmIfNeededRef.current = () => {};
     };
   }, [highScore]);
 
   const handleRestart = () => {
+    startBgmIfNeededRef.current?.();
     if (gameStateRef.current) {
       gameStateRef.current.restart();
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-start pt-2 pb-4 overflow-hidden select-none">
-      <div className="max-w-md w-full px-4">
+    <div className="min-h-screen w-full bg-gradient-to-b from-[#f7f9fc] via-[#f1f4fb] to-[#e6ebf5] flex flex-col items-center justify-start pt-4 pb-6 overflow-hidden select-none relative">
+      <canvas
+        ref={snowCanvasRef}
+        className="pointer-events-none fixed inset-0 w-full h-full z-30"
+        aria-hidden
+      />
+
+      <div className="max-w-md w-full px-4 relative z-20">
         {/* 顶部标题：上下两行 + 左右大星星 */}
-        <div className="mt-2 mb-2 flex items-center justify-center gap-3">
-          <span className="text-2xl md:text-3xl text-slate-800 leading-none">
-            ✦
-          </span>
-          <h1 className="font-[Henny_Penny] text-[1.9rem] md:text-[2.3rem] leading-[1.05] tracking-[0.22em] text-slate-900 text-center">
+        <div className="mt-1 mb-3 flex items-center justify-center gap-5">
+          <span className="text-[2.6rem] md:text-[3.15rem] text-slate-800 leading-none">✦</span>
+          <h1 className="font-henny-penny text-[2.2rem] md:text-[2.6rem] leading-[1.05] tracking-[0.28em] text-slate-900 text-center drop-shadow-sm">
             CELESTIAL
             <br />
             JUMP
           </h1>
-          <span className="text-2xl md:text-3xl text-slate-800 leading-none">
-            ✦
-          </span>
+          <span className="text-[2.6rem] md:text-[3.15rem] text-slate-800 leading-none">✦</span>
         </div>
 
         {/* 分数栏 */}
-        <div className="flex justify-between items-center mb-2 px-6">
+        <div className="flex justify-between items-center mb-3 px-6 text-slate-700">
           <div className="text-center">
-            <p className="text-xs font-light text-gray-500 tracking-wider uppercase mb-1">
+            <p className="text-[11px] font-semibold text-slate-500 tracking-[0.24em] uppercase mb-1">
               Score
             </p>
-            <p className="text-3xl font-light text-gray-800 tabular-nums">
-              {score}
-            </p>
+            <p className="text-3xl font-light text-slate-800 tabular-nums">{score}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs font-light text-gray-500 tracking-wider uppercase mb-1">
+            <p className="text-[11px] font-semibold text-slate-500 tracking-[0.24em] uppercase mb-1">
               Best
             </p>
-            <p className="text-3xl font-light text-gray-800 tabular-nums">
-              {highScore}
-            </p>
+            <p className="text-3xl font-light text-slate-800 tabular-nums">{highScore}</p>
           </div>
         </div>
 
         {/* 游戏画布 */}
-        <div className="relative bg-white/50 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-white/60">
-          <canvas
-            ref={canvasRef}
-            className="w-full h-[540px] md:h-[620px] block"
-          />
+        <div className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl">
+          <canvas ref={canvasRef} className="w-full h-[620px] md:h-[660px] block" />
 
           {gameOver && (
             <div className="absolute inset-0 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center">
               <div className="text-center space-y-6 px-8">
-                <div className="text-2xl mb-4 text-gray-600">
-                  ─── ⋆⋅ ♱ ⋅⋆ ───
-                </div>
+                <div className="text-2xl mb-4 text-gray-600">─── ⋆⋅ ♱ ⋅⋆ ───</div>
                 <h2 className="text-3xl font-light text-gray-800 tracking-wide">
                   {score < 500
                     ? 'are you retarded or sum?'
@@ -1085,12 +1113,8 @@ export default function CelestialJump() {
                 </h2>
 
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-500 tracking-wider uppercase">
-                    Final Score
-                  </p>
-                  <p className="text-5xl font-light text-gray-800 tabular-nums">
-                    {score}
-                  </p>
+                  <p className="text-sm text-gray-500 tracking-wider uppercase">Final Score</p>
+                  <p className="text-5xl font-light text-gray-800 tabular-nums">{score}</p>
                 </div>
                 <Button
                   onClick={handleRestart}
