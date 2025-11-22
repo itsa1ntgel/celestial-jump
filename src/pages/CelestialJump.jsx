@@ -836,7 +836,7 @@ export default function CelestialJump() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-start pt-4 pb-4 overflow-hidden">
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-start pt-4 pb-4 overflow-hidden select-none">
       <div className="max-w-md w-full px-4">
         <div className="mb-4 text-center">
           <h1 className="text-4xl font-light tracking-wider text-gray-800 mb-2">
