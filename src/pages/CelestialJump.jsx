@@ -63,13 +63,15 @@ export default function CelestialJump() {
     
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-
+    
     // Game constants
     const GRAVITY = 0.2;
     const JUMP_FORCE = -10.5;
     const PLAYER_SIZE = 30;
     const PLATFORM_WIDTH = 80;
     const PLATFORM_HEIGHT = 12;
+    const FINAL_SCORE = 50000; // 5 万封顶
+
 
     // Player (Silver Star) - using screen coordinates
     const player = {
@@ -86,6 +88,9 @@ export default function CelestialJump() {
     const platforms = [];
     const icePlatforms = new Set();
     let cameraY = 0;
+    let cameraY = 0;
+    let finalPlateauReached = false; // 是否已经到达最终休息区
+
     
     // Snowflakes
     const snowflakes = [];
@@ -502,19 +507,47 @@ export default function CelestialJump() {
         }
       }
 
-      if (player.y < height * 0.4 && player.velocityY < 0 && !isGameOverRef.current) {
-        const scrollAmount = -player.velocityY;
-        player.y += scrollAmount;
-        cameraY += scrollAmount;
-        currentScore += scrollAmount;
-        setScore(Math.floor(currentScore));
-        
-        platforms.forEach(p => p.y += scrollAmount);
-        monsters.forEach(m => m.y += scrollAmount);
+// 相机上移 + 记分（到 5 万分就封顶）
+    let justReachedFinal = false;
+
+    if (
+      player.y < height * 0.4 &&
+      player.velocityY < 0 &&
+      !isGameOverRef.current &&
+      !finalPlateauReached
+    ) {
+      const scrollAmount = -player.velocityY;
+    
+      // 场景整体往下推（玩家看起来往上爬）
+      player.y += scrollAmount;
+      cameraY += scrollAmount;
+      platforms.forEach((p) => (p.y += scrollAmount));
+      monsters.forEach((m) => (m.y += scrollAmount));
+    
+      // 累加分数，并判断是否达到最终分数
+      currentScore += scrollAmount;
+      if (currentScore >= FINAL_SCORE) {
+        currentScore = FINAL_SCORE;
+        finalPlateauReached = true;
+        justReachedFinal = true;
       }
+      setScore(Math.floor(currentScore));
+    }
+    
+    // 如果刚刚达到 5 万分，生成“最后一块方块”
+    if (justReachedFinal) {
+      const finalPlatform = {
+        x: width / 2 - PLATFORM_WIDTH / 2,
+        y: height * 0.7, // 大概在画面下半部，舒服一点
+        width: PLATFORM_WIDTH,
+        height: PLATFORM_HEIGHT,
+      };
+      platforms.push(finalPlatform);
+    }
+
       
       const topPlatform = platforms[0];
-      if (topPlatform && topPlatform.y > 100) {
+      if (topPlatform && topPlatform.y > 100 && !finalPlateauReached) {
         let x, attempts = 0;
         let overlapping = true;
         const newY = topPlatform.y - 70 - Math.random() * 30;
@@ -560,7 +593,12 @@ export default function CelestialJump() {
         maxMonsters = 2;
       }
 
-if (Math.random() > 0.99 && platforms.length > 0 && monsters.length < maxMonsters) {
+if (
+    Math.random() > 0.99 && 
+    platforms.length > 0 && 
+    monsters.length < maxMonsters &&
+    !finalPlateauReached
+    ) {
   const isChinese = Math.random() > 0.5;
   let newX, attempts = 0;
   let tooClose = true;
@@ -635,6 +673,16 @@ if (Math.random() > 0.99 && platforms.length > 0 && monsters.length < maxMonster
           monsterShakes.delete(removed);
         }
       }
+        // 如果已经到达最终休息区，限制玩家最高高度，不让继续往上爬
+        if (finalPlateauReached) {
+          const topLimit = height * 0.25; // 玩家最高只能到画面 1/4 处
+          if (player.y < topLimit) {
+            player.y = topLimit;
+            if (player.velocityY < 0) {
+              player.velocityY = 0;
+            }
+          }
+        }
 
       for (let i = monsters.length - 1; i >= 0; i--) {
         const monster = monsters[i];
@@ -897,14 +945,22 @@ if (currentScore < 15000) {
             <div className="absolute inset-0 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center">
               <div className="text-center space-y-6 px-8">
                 <div className="text-2xl mb-4 text-gray-600">─── ⋆⋅ ♱ ⋅⋆ ───</div>
-                <h2 className="text-3xl font-light text-gray-800 tracking-wide">
-                  {score < 500 ? 'Are you retarded or sum?' :
-                   score < 2000 ? "You can't be real" :
-                   score < 5000 ? 'Still not so smart' :
-                   score >= 20000 ? 'Get some rest gang' :
-                   score >= 10000 ? 'Have you seen the snow' :
-                   'Journey Complete'}
-                </h2>
+             <h2 className="text-3xl font-light text-gray-800 tracking-wide">
+                {score < 500
+                  ? 'are you retarded or sum?'
+                  : score < 2000
+                  ? "you can't be real"
+                  : score < 5000
+                  ? 'not so smart'
+                  : score >= 40000
+                  ? 'lets die in a beautiful winter'
+                  : score >= 20000
+                  ? 'Well done. Now go get some rest gang'
+                  : score >= 10000
+                  ? 'Have you seen the snow?'
+                  : 'Journey Complete'}
+              </h2>
+
                 <div className="space-y-2">
                   <p className="text-sm text-gray-500 tracking-wider uppercase">Final Score</p>
                   <p className="text-5xl font-light text-gray-800 tabular-nums">{score}</p>
