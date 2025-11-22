@@ -566,6 +566,7 @@ if (Math.random() > 0.99 && platforms.length > 0 && monsters.length < maxMonster
   let tooClose = true;
   const newMonsterY = platforms[0].y - 100;
 
+  // 尝试多次，保证怪物之间不要太近
   while (tooClose && attempts < 10) {
     newX = Math.random() * (width - 50);
     tooClose = false;
@@ -588,38 +589,37 @@ if (Math.random() > 0.99 && platforms.length > 0 && monsters.length < maxMonster
     if (isChinese) {
       selectedChar = chineseChars[Math.floor(Math.random() * chineseChars.length)];
     } else {
-      const availableChars = currentScore >= 8000 ? fluffyChars : fluffyChars.slice(0, 2);
+      const availableChars =
+        currentScore >= 8000 ? fluffyChars : fluffyChars.slice(0, 2);
       selectedChar = availableChars[Math.floor(Math.random() * availableChars.length)];
 
-      // ★ 限制长表情最多 2 个
+      // ★ 限制长表情怪最多 2 个
       const currentLongCount = monsters.filter(
         (m) => m.type === 'fluffy' && longFluffyChars.includes(m.char)
       ).length;
 
       if (longFluffyChars.includes(selectedChar) && currentLongCount >= 2) {
-        // 如果已经有两个长表情了，就强制换成短表情
+        // 已经有两个长表情了，就强制换成短表情
         const shortFluffyChars = fluffyChars.slice(0, 2);
-        selectedChar = shortFluffyChars[Math.floor(Math.random() * shortFluffyChars.length)];
+        selectedChar =
+          shortFluffyChars[Math.floor(Math.random() * shortFluffyChars.length)];
       }
     }
-
-    // 根据表情类型决定碰撞箱大小（下面第三部分会用到）
-    const type = isChinese ? 'chinese' : 'fluffy';
-    const { width: monsterWidth, height: monsterHeight } = getMonsterSize(selectedChar, type);
 
     monsters.push({
       x: newX,
       y: newMonsterY,
-      width: monsterWidth,
-      height: monsterHeight,
-      type,
+      width: 50,
+      height: 50,
+      type: isChinese ? 'chinese' : 'fluffy',
       char: selectedChar,
-      color: isChinese ? '#fff' : (Math.random() > 0.5 ? '#e0f2fe' : '#fff'),
+      color: isChinese ? '#fff' : Math.random() > 0.5 ? '#e0f2fe' : '#fff',
       bobOffset: Math.random() * Math.PI * 2,
-      rotation: Math.random() * Math.PI * 2
+      rotation: Math.random() * Math.PI * 2,
     });
   }
 }
+
 
 
       for (let i = platforms.length - 1; i >= 0; i--) {
