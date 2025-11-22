@@ -14,93 +14,122 @@ export default function CelestialJump() {
     jumpOnMonster: [],
     gameOver: null
   });
-
+  const lastJumpSoundRef = useRef(0);     // 上一次跳跃音效时间
+  const lastMonsterSoundRef = useRef(0);  // 上一次踩怪音效时间
+ 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Initialize sounds from local /public/sounds
-    const jumpSoundFiles = [
-      '/sounds/jump_sound_1.mp3',
-      '/sounds/jump_sound_2.mp3',
-      '/sounds/jump_sound_3.mp3',
-      '/sounds/jump_sound_4.mp3',
-      '/sounds/jump_sound_5.mp3',
-      '/sounds/jump_sound_6.mp3',
-    ];
-
-    const jumpOnMonsterSoundFiles = [
-      '/sounds/jump_on_monsters_sound_808.mp3',
-      '/sounds/jump_on_monsters_sound_CHH.mp3',
-      '/sounds/jump_on_monsters_sound_OHH.mp3',
-      '/sounds/jump_on_monsters_sound_laser.mp3',
-      '/sounds/jump_on_monsters_sound_snare.mp3',
-    ];
-
-    // 小工具：预加载 + 设置音量
-    const createAudioList = (files, volume) =>
-      files.map((path) => {
-        const audio = new Audio(path);
-        audio.volume = volume;
-        audio.preload = 'auto';
-        audio.load();
-        return audio;
-      });
-
-    // 跳跃音效 & 踩怪音效
-    soundsRef.current.jump = createAudioList(jumpSoundFiles, 0.3);
-    soundsRef.current.jumpOnMonster = createAudioList(jumpOnMonsterSoundFiles, 0.4);
-
-    // Game Over 音效
-    const gameOverAudio = new Audio('/sounds/game_over_sound_kyu.mp3');
-    gameOverAudio.volume = 0.5;
-    gameOverAudio.preload = 'auto';
-    gameOverAudio.load();
-    soundsRef.current.gameOver = gameOverAudio;
-
-
-    const playAudio = (audioElement) => {
-      const clonedAudio = audioElement.cloneNode();
-      clonedAudio.volume = audioElement.volume;
-      clonedAudio.play().catch(() => {});
+    // ========= 音效初始化 =========
+    const createAudio = (path, volume = 1) => {
+      const audio = new Audio(path);
+      audio.volume = volume;
+      audio.preload = 'auto';
+      return audio;
     };
-    // 踩怪物音效：808 占 50%，其他音效平分剩下 50%
-    const playWeightedMonsterSound = () => {
-      const sounds = soundsRef.current.jumpOnMonster;
-      if (!sounds || sounds.length === 0) return;
-
-      // 确保 808 是数组里的第一个音效（jump_on_monsters_sound_808.mp3）
-      const index808 = 0;
-
-      const r = Math.random();
-      if (r < 0.5) {
-        // 50%：播放 808
-        playAudio(sounds[index808]);
-      } else {
-        // 另外 50%：在剩下的怪物音效里平均随机
-        const otherIndexes = [];
-        for (let i = 0; i < sounds.length; i++) {
-          if (i !== index808) otherIndexes.push(i);
-        }
-        if (otherIndexes.length === 0) {
-          playAudio(sounds[index808]);
-          return;
-        }
-        const randomOtherIndex =
-          otherIndexes[Math.floor(Math.random() * otherIndexes.length)];
-        playAudio(sounds[randomOtherIndex]);
+    // 智能播放：如果这个 audio 正在播，就 clone 一份；否则复用原来的
+    const safePlay = (audio) => {
+      if (!audio) return;
+      try {
+        const target = audio.paused ? audio : audio.cloneNode();
+        target.currentTime = 0;
+        target.play().catch(() => {});
+      } catch (e) {
+        // 静默失败，避免报错卡顿
       }
     };
 
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
+    // 跳跃音效（平台）
+    const jumpSounds = [
+      createAudio('/sounds/jump_sound_1.mp3', 0.35),
+      createAudio('/sounds/jump_sound_2.mp3', 0.35),
+      createAudio('/sounds/jump_sound_3.mp3', 0.35),
+      createAudio('/sounds/jump_sound_4.mp3', 0.35),
+      createAudio('/sounds/jump_sound_5.mp3', 0.35),
+      createAudio('/sounds/jump_sound_6.mp3', 0.35),
+    ];
+
+    // 踩怪物音效（带权重：808 50%，其他平均 50%）
+    const monsterSounds = [
+      { audio: createAudio('/sounds/jump_on_monsters_sound_808.mp3', 0.55), weight: 0.5 },
+      { audio: createAudio('/sounds/jump_on_monsters_sound_CHH.mp3', 0.4), weight: 0.125 },
+      { audio: createAudio('/sounds/jump_on_monsters_sound_OHH.mp3', 0.4), weight: 0.125 },
+      { audio: createAudio('/sounds/jump_on_monsters_sound_laser.mp3', 0.4), weight: 0.125 },
+      { audio: createAudio('/sounds/jump_on_monsters_sound_snare.mp3', 0.4), weight: 0.125 },
+    ];
+
+    // Game Over 音效
+    const gameOverAudio = createAudio('/sounds/game_over_sound_kyu.mp3', 0.5);
+
+    // 存进 ref，方便其它地方用
+    soundsRef.current.jump = jumpSounds;
+    soundsRef.current.jumpOnMonster = monsterSounds.map(m => m.audio);
+    soundsRef.current.gameOver = gameOverAudio;
+
+    const now = () => performance.now();
+
+    // 跳跃音效：稍微有一点冷却，防止一帧内连续多次触发同一个声
+    const playJumpSound = () => {
+      const sounds = soundsRef.current.jump;
+      if (!sounds || !sounds.length) return;
     
-    const resizeCanvas = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
+      const t = now();
+      if (t - lastJumpSoundRef.current < 50) return; // 原来是 80ms，可以调小一点
+      lastJumpSoundRef.current = t;
+    
+      const audio = sounds[Math.floor(Math.random() * sounds.length)];
+      safePlay(audio);
     };
+
+
+// 踩怪物音效：808 50%，其他平均 50%，100ms 冷却
+const playWeightedMonsterSound = () => {
+  if (!monsterSounds.length) return;
+
+  const t = now();
+  if (t - lastMonsterSoundRef.current < 80) return; // 略小于原来的 100ms
+  lastMonsterSoundRef.current = t;
+
+  const r = Math.random();
+  let acc = 0;
+  for (const { audio, weight } of monsterSounds) {
+    acc += weight;
+    if (r <= acc) {
+      safePlay(audio);
+      return;
+    }
+  }
+
+  // 兜底：万一浮点误差没命中
+  safePlay(monsterSounds[0].audio);
+};
+
+
+    // Game Over 音效
+    const playGameOverSound = () => {
+      const audio = soundsRef.current.gameOver;
+      if (!audio) return;
+      try {
+        audio.currentTime = 0;
+        audio.play();
+      } catch (e) {}
+    };
+
+
+const ctx = canvas.getContext('2d');
+// 限制最高像素比，避免 3x / 4x 这种把手机压趴
+const dpr = Math.min(window.devicePixelRatio || 1, 1.8);
+
+const resizeCanvas = () => {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+
+  // 用 setTransform 重置缩放，避免多次调用 scale 累积
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+};
+
     
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -535,8 +564,8 @@ export default function CelestialJump() {
           ) {
             player.velocityY = JUMP_FORCE;
 
-            const randomJumpSound = soundsRef.current.jump[Math.floor(Math.random() * soundsRef.current.jump.length)];
-            playAudio(randomJumpSound);
+            playJumpSound();
+
 
             if (icePlatforms.has(platform)) {
               icePlatforms.delete(platform);
@@ -755,7 +784,7 @@ if (
           } else {
             isGameOverRef.current = true;
             setGameOver(true);
-            playAudio(soundsRef.current.gameOver);
+            playGameOverSound();
             if (currentScore > highScore) {
               setHighScore(Math.floor(currentScore));
             }
@@ -771,7 +800,7 @@ if (
       if (player.y > height + 50) {
         isGameOverRef.current = true;
         setGameOver(true);
-        playAudio(soundsRef.current.gameOver);
+        playGameOverSound();
         if (currentScore > highScore) {
           setHighScore(Math.floor(currentScore));
         }
