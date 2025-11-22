@@ -38,7 +38,8 @@ export default function CelestialJump() {
         index = (index + 1) % pool.length;
         try {
           audio.currentTime = 0;
-          audio.play().catch(() => {});
+          const p = audio.play();
+          if (p && p.catch) p.catch(() => {});
         } catch (e) {}
       };
 
@@ -59,19 +60,30 @@ export default function CelestialJump() {
       4
     );
 
+    // 用户第一次按键 / 触摸时启动 BGM
     const startBgmIfNeeded = () => {
       const audio = bgmRef.current;
       if (!audio || bgmStartedRef.current) return;
 
-      bgmStartedRef.current = true;
       audio.currentTime = 0;
       audio.volume = BGM_VOLUME;
-      audio.play().catch(() => {
-        // 如果失败，下次再尝试
-        bgmStartedRef.current = false;
-      });
+
+      const playPromise = audio.play();
+      if (playPromise && playPromise.then) {
+        playPromise
+          .then(() => {
+            bgmStartedRef.current = true;
+          })
+          .catch(() => {
+            // 如果被浏览器拦截，下次再试
+            bgmStartedRef.current = false;
+          });
+      } else {
+        bgmStartedRef.current = true;
+      }
     };
 
+    // game over 时 0.5s 渐隐 BGM
     const fadeOutBgm = (durationMs = 500) => {
       const audio = bgmRef.current;
       if (!audio || !bgmStartedRef.current) return;
@@ -183,6 +195,7 @@ export default function CelestialJump() {
       icePlatforms.clear();
       const height = canvas.height / dpr;
 
+      // 初始平台
       platforms.push({
         x: canvas.width / (2 * dpr) - PLATFORM_WIDTH / 2,
         y: height * 0.85,
@@ -338,7 +351,7 @@ export default function CelestialJump() {
       ctx.beginPath();
 
       for (let i = 0; i < 5; i++) {
-        const angle = ((Math.PI * 2 * i) / 5) - Math.PI / 2;
+        const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
         const px = Math.cos(angle) * size;
         const py = Math.sin(angle) * size;
 
@@ -448,7 +461,7 @@ export default function CelestialJump() {
 
       ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
       for (let i = 0; i < 8; i++) {
-        const angle = ((Math.PI * 2 * i) / 8) + time * 0.001;
+        const angle = (Math.PI * 2 * i) / 8 + time * 0.001;
         const distance = 28 + Math.sin(time * 0.002 + i) * 4;
         const flakeX = Math.cos(angle) * distance;
         const flakeY = Math.sin(angle) * distance;
@@ -459,7 +472,7 @@ export default function CelestialJump() {
       }
 
       for (let i = 0; i < 6; i++) {
-        const angle = ((Math.PI * 2 * i) / 6);
+        const angle = (Math.PI * 2 * i) / 6;
         const offsetX = Math.cos(angle) * 18;
         const offsetY = Math.sin(angle) * 18;
 
@@ -1007,16 +1020,23 @@ export default function CelestialJump() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-start pt-2 pb-4 overflow-hidden select-none">
       <div className="max-w-md w-full px-4">
-<div className="mt-1 mb-1 text-center">
-  <h1 className="font-[Henny_Penny] text-[1.9rem] md:text-[2.3rem] leading-tight tracking-[0.18em] text-slate-900">
-    CELESTIAL
-    <br />
-    JUMP
-  </h1>
-</div>
+        {/* 顶部标题：上下两行 + 左右大星星 */}
+        <div className="mt-2 mb-2 flex items-center justify-center gap-3">
+          <span className="text-2xl md:text-3xl text-slate-800 leading-none">
+            ✦
+          </span>
+          <h1 className="font-[Henny_Penny] text-[1.9rem] md:text-[2.3rem] leading-[1.05] tracking-[0.22em] text-slate-900 text-center">
+            CELESTIAL
+            <br />
+            JUMP
+          </h1>
+          <span className="text-2xl md:text-3xl text-slate-800 leading-none">
+            ✦
+          </span>
+        </div>
 
+        {/* 分数栏 */}
         <div className="flex justify-between items-center mb-2 px-6">
-
           <div className="text-center">
             <p className="text-xs font-light text-gray-500 tracking-wider uppercase mb-1">
               Score
@@ -1035,6 +1055,7 @@ export default function CelestialJump() {
           </div>
         </div>
 
+        {/* 游戏画布 */}
         <div className="relative bg-white/50 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-white/60">
           <canvas
             ref={canvasRef}
