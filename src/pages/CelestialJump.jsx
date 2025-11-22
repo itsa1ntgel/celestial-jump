@@ -836,7 +836,7 @@ export default function DoodleJump() {
   };
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex flex-col items-center justify-center p-4 overflow-hidden">
+    <div className="h-screen w-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-center p-4 overflow-hidden">
       <div className="max-w-md w-full">
         <div className="mb-4 text-center">
           <h1 className="text-4xl font-light tracking-wider text-gray-800 mb-2">
@@ -887,11 +887,6 @@ export default function DoodleJump() {
               </div>
             </div>
           )}
-        </div>
-
-        <div className="mt-4 text-center text-sm text-gray-500 font-light">
-          <p className="tracking-wide">Desktop: ← → Arrow Keys or A/D</p>
-          <p className="tracking-wide mt-1">Mobile: Touch and drag to move</p>
         </div>
       </div>
     </div>
