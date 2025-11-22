@@ -94,7 +94,9 @@ export default function CelestialJump() {
     const monsters = [];
     const chineseChars = ['天', '使', '棘', '雪', '血', '死', '亡'];
     const fluffyChars = ['´ཀ`', '𓉸ྀི', 'ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
+    const longFluffyChars = ['ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ']; // 较长的两个表情
     const monsterShakes = new Map();
+
 
     // Initialize platforms
     const initPlatforms = () => {
@@ -558,51 +560,67 @@ export default function CelestialJump() {
         maxMonsters = 2;
       }
 
-      if (Math.random() > 0.99 && platforms.length > 0 && monsters.length < maxMonsters) {
-        const isChinese = Math.random() > 0.5;
-        let newX, attempts = 0;
-        let tooClose = true;
-        const newMonsterY = platforms[0].y - 100;
+if (Math.random() > 0.99 && platforms.length > 0 && monsters.length < maxMonsters) {
+  const isChinese = Math.random() > 0.5;
+  let newX, attempts = 0;
+  let tooClose = true;
+  const newMonsterY = platforms[0].y - 100;
 
-        while (tooClose && attempts < 10) {
-          newX = Math.random() * (width - 50);
-          tooClose = false;
+  while (tooClose && attempts < 10) {
+    newX = Math.random() * (width - 50);
+    tooClose = false;
 
-          for (const monster of monsters) {
-            const dx = newX - monster.x;
-            const dy = newMonsterY - monster.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+    for (const monster of monsters) {
+      const dx = newX - monster.x;
+      const dy = newMonsterY - monster.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance < 100) {
-              tooClose = true;
-              break;
-            }
-          }
-          attempts++;
-        }
-
-        if (!tooClose || attempts === 10) {
-          let selectedChar;
-          if (isChinese) {
-            selectedChar = chineseChars[Math.floor(Math.random() * chineseChars.length)];
-          } else {
-            const availableChars = currentScore >= 8000 ? fluffyChars : fluffyChars.slice(0, 2);
-            selectedChar = availableChars[Math.floor(Math.random() * availableChars.length)];
-          }
-
-          monsters.push({
-            x: newX,
-            y: newMonsterY,
-            width: 50,
-            height: 50,
-            type: isChinese ? 'chinese' : 'fluffy',
-            char: selectedChar,
-            color: isChinese ? '#fff' : (Math.random() > 0.5 ? '#e0f2fe' : '#fff'),
-            bobOffset: Math.random() * Math.PI * 2,
-            rotation: Math.random() * Math.PI * 2
-          });
-        }
+      if (distance < 100) {
+        tooClose = true;
+        break;
       }
+    }
+    attempts++;
+  }
+
+  if (!tooClose || attempts === 10) {
+    let selectedChar;
+    if (isChinese) {
+      selectedChar = chineseChars[Math.floor(Math.random() * chineseChars.length)];
+    } else {
+      const availableChars = currentScore >= 8000 ? fluffyChars : fluffyChars.slice(0, 2);
+      selectedChar = availableChars[Math.floor(Math.random() * availableChars.length)];
+
+      // ★ 限制长表情最多 2 个
+      const currentLongCount = monsters.filter(
+        (m) => m.type === 'fluffy' && longFluffyChars.includes(m.char)
+      ).length;
+
+      if (longFluffyChars.includes(selectedChar) && currentLongCount >= 2) {
+        // 如果已经有两个长表情了，就强制换成短表情
+        const shortFluffyChars = fluffyChars.slice(0, 2);
+        selectedChar = shortFluffyChars[Math.floor(Math.random() * shortFluffyChars.length)];
+      }
+    }
+
+    // 根据表情类型决定碰撞箱大小（下面第三部分会用到）
+    const type = isChinese ? 'chinese' : 'fluffy';
+    const { width: monsterWidth, height: monsterHeight } = getMonsterSize(selectedChar, type);
+
+    monsters.push({
+      x: newX,
+      y: newMonsterY,
+      width: monsterWidth,
+      height: monsterHeight,
+      type,
+      char: selectedChar,
+      color: isChinese ? '#fff' : (Math.random() > 0.5 ? '#e0f2fe' : '#fff'),
+      bobOffset: Math.random() * Math.PI * 2,
+      rotation: Math.random() * Math.PI * 2
+    });
+  }
+}
+
 
       for (let i = platforms.length - 1; i >= 0; i--) {
         if (platforms[i].y > height + 50) {
@@ -681,26 +699,40 @@ export default function CelestialJump() {
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
       
-      const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
+const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
 
-      if (currentScore < 15000) {
-        bgGradient.addColorStop(0, '#f8fafc');
-        bgGradient.addColorStop(1, '#e2e8f0');
-      } else if (currentScore < 40000) {
-        const progress = (currentScore - 15000) / 25000;
-        const r1 = Math.floor(248 - progress * (248 - 74));
-        const g1 = Math.floor(250 - progress * (250 - 26));
-        const b1 = Math.floor(252 - progress * (252 - 26));
-        const r2 = Math.floor(226 - progress * (226 - 92));
-        const g2 = Math.floor(232 - progress * (232 - 26));
-        const b2 = Math.floor(240 - progress * (240 - 26));
+if (currentScore < 15000) {
+  // 0–14999：纯蓝白
+  bgGradient.addColorStop(0, '#f8fafc'); // 顶部
+  bgGradient.addColorStop(1, '#e2e8f0'); // 底部
+} else if (currentScore < 40000) {
+  // 15000–39999：从蓝白渐变到深红
+  const progress = (currentScore - 15000) / 25000; // 0 → 1
 
-        bgGradient.addColorStop(0, `rgb(${r1}, ${g1}, ${b1})`);
-        bgGradient.addColorStop(1, `rgb(${r2}, ${g2}, ${b2})`);
-      } else {
-        bgGradient.addColorStop(0, '#4a1a1a');
-        bgGradient.addColorStop(1, '#5c1a1a');
-      }
+  // 顶部颜色：#f8fafc → #4a1a1a
+  const topStart = { r: 248, g: 250, b: 252 };
+  const topEnd   = { r: 74,  g: 26,  b: 26  };
+
+  // 底部颜色：#e2e8f0 → #5c1a1a
+  const bottomStart = { r: 226, g: 232, b: 240 };
+  const bottomEnd   = { r: 92,  g: 26,  b: 26  };
+
+  const r1 = Math.round(topStart.r + (topEnd.r - topStart.r) * progress);
+  const g1 = Math.round(topStart.g + (topEnd.g - topStart.g) * progress);
+  const b1 = Math.round(topStart.b + (topEnd.b - topStart.b) * progress);
+
+  const r2 = Math.round(bottomStart.r + (bottomEnd.r - bottomStart.r) * progress);
+  const g2 = Math.round(bottomStart.g + (bottomEnd.g - bottomStart.g) * progress);
+  const b2 = Math.round(bottomStart.b + (bottomEnd.b - bottomStart.b) * progress);
+
+  bgGradient.addColorStop(0, `rgb(${r1}, ${g1}, ${b1})`);
+  bgGradient.addColorStop(1, `rgb(${r2}, ${g2}, ${b2})`);
+} else {
+  // ≥ 40000：完全进入深红世界
+  bgGradient.addColorStop(0, '#4a1a1a');
+  bgGradient.addColorStop(1, '#5c1a1a');
+}
+
       
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, width, height);
