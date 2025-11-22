@@ -19,36 +19,77 @@ export default function CelestialJump() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Initialize sounds
-    const jumpSounds = [
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_sound_1.mp3',
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_sound_2.mp3',
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_sound_3.mp3',
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_sound_4.mp3',
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_sound_5.mp3',
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_sound_6.mp3'
-    ];
-    
-    const jumpOnMonsterSounds = [
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_on_monsters_sound_1.mp3',
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_on_monsters_sound_2.mp3',
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_on_monsters_sound_3.mp3',
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_on_monsters_sound_5.mp3',
-      'https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/jump_on_monsters_sound_6.mp3'
+    // Initialize sounds from local /public/sounds
+    const jumpSoundFiles = [
+      '/sounds/jump_sound_1.mp3',
+      '/sounds/jump_sound_2.mp3',
+      '/sounds/jump_sound_3.mp3',
+      '/sounds/jump_sound_4.mp3',
+      '/sounds/jump_sound_5.mp3',
+      '/sounds/jump_sound_6.mp3',
     ];
 
-    soundsRef.current.jump = jumpSounds.map(url => new Audio(url));
-    soundsRef.current.jumpOnMonster = jumpOnMonsterSounds.map(url => new Audio(url));
-    soundsRef.current.gameOver = new Audio('https://github.com/itsa1ntgel/tsj-jump-sound-effect/raw/refs/heads/main/game_over_sound.mp3');
+    const jumpOnMonsterSoundFiles = [
+      '/sounds/jump_on_monsters_sound_808.mp3',
+      '/sounds/jump_on_monsters_sound_CHH.mp3',
+      '/sounds/jump_on_monsters_sound_OHH.mp3',
+      '/sounds/jump_on_monsters_sound_laser.mp3',
+      '/sounds/jump_on_monsters_sound_snare.mp3',
+    ];
 
-    soundsRef.current.jump.forEach(audio => audio.volume = 0.3);
-    soundsRef.current.jumpOnMonster.forEach(audio => audio.volume = 0.4);
-    soundsRef.current.gameOver.volume = 0.5;
+    // 小工具：预加载 + 设置音量
+    const createAudioList = (files, volume) =>
+      files.map((path) => {
+        const audio = new Audio(path);
+        audio.volume = volume;
+        audio.preload = 'auto';
+        audio.load();
+        return audio;
+      });
+
+    // 跳跃音效 & 踩怪音效
+    soundsRef.current.jump = createAudioList(jumpSoundFiles, 0.3);
+    soundsRef.current.jumpOnMonster = createAudioList(jumpOnMonsterSoundFiles, 0.4);
+
+    // Game Over 音效
+    const gameOverAudio = new Audio('/sounds/game_over_sound_kyu.mp3');
+    gameOverAudio.volume = 0.5;
+    gameOverAudio.preload = 'auto';
+    gameOverAudio.load();
+    soundsRef.current.gameOver = gameOverAudio;
+
 
     const playAudio = (audioElement) => {
       const clonedAudio = audioElement.cloneNode();
       clonedAudio.volume = audioElement.volume;
       clonedAudio.play().catch(() => {});
+    };
+    // 踩怪物音效：808 占 50%，其他音效平分剩下 50%
+    const playWeightedMonsterSound = () => {
+      const sounds = soundsRef.current.jumpOnMonster;
+      if (!sounds || sounds.length === 0) return;
+
+      // 确保 808 是数组里的第一个音效（jump_on_monsters_sound_808.mp3）
+      const index808 = 0;
+
+      const r = Math.random();
+      if (r < 0.5) {
+        // 50%：播放 808
+        playAudio(sounds[index808]);
+      } else {
+        // 另外 50%：在剩下的怪物音效里平均随机
+        const otherIndexes = [];
+        for (let i = 0; i < sounds.length; i++) {
+          if (i !== index808) otherIndexes.push(i);
+        }
+        if (otherIndexes.length === 0) {
+          playAudio(sounds[index808]);
+          return;
+        }
+        const randomOtherIndex =
+          otherIndexes[Math.floor(Math.random() * otherIndexes.length)];
+        playAudio(sounds[randomOtherIndex]);
+      }
     };
 
     const ctx = canvas.getContext('2d');
@@ -695,8 +736,8 @@ if (
           if (player.y + player.height <= monster.y + monster.height) {
             player.velocityY = JUMP_FORCE;
 
-            const randomMonsterSound = soundsRef.current.jumpOnMonster[Math.floor(Math.random() * soundsRef.current.jumpOnMonster.length)];
-            playAudio(randomMonsterSound);
+            playWeightedMonsterSound();
+
 
             monsterShakes.set(monster, {
               startTime: time,
