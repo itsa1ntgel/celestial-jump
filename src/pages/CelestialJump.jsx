@@ -159,7 +159,38 @@ const resizeCanvas = () => {
     let cameraY = 0;
     let finalPlateauReached = false; // 是否已经到达最终休息区
 
-    
+        // 平台最小间距（横向 / 纵向）
+    const MIN_HORIZONTAL_GAP = 12; // 水平方向至少留 12px 缝
+    const MIN_VERTICAL_GAP = 35;   // 竖直方向也要留一点距离
+
+    // 检查一个新平台 (x, y) 是否离现有平台太近（包括重叠 & 紧贴）
+    const isTooCloseToExistingPlatforms = (x, y) => {
+      for (const p of platforms) {
+        // 把新平台的矩形放大一点当作“碰撞区”
+        const leftA = x - MIN_HORIZONTAL_GAP;
+        const rightA = x + PLATFORM_WIDTH + MIN_HORIZONTAL_GAP;
+        const topA = y - MIN_VERTICAL_GAP;
+        const bottomA = y + PLATFORM_HEIGHT + MIN_VERTICAL_GAP;
+
+        const leftB = p.x;
+        const rightB = p.x + p.width;
+        const topB = p.y;
+        const bottomB = p.y + p.height;
+
+        // 如果两个扩展矩形有交集，就认为太近
+        const separated =
+          rightA < leftB ||
+          leftA > rightB ||
+          bottomA < topB ||
+          topA > bottomB;
+
+        if (!separated) {
+          return true; // 有一个太近的
+        }
+      }
+      return false; // 和所有平台之间都保持了安全间距
+    };
+
     // Snowflakes
     const snowflakes = [];
     
@@ -177,52 +208,46 @@ const resizeCanvas = () => {
       icePlatforms.clear();
       const height = canvas.height / dpr;
       
+      // 初始基准平台
       platforms.push({
         x: canvas.width / (2 * dpr) - PLATFORM_WIDTH / 2,
         y: height * 0.85,
         width: PLATFORM_WIDTH,
-        height: PLATFORM_HEIGHT
+        height: PLATFORM_HEIGHT,
       });
 
       let y = height * 0.85 - 80;
+
       while (y > -500) {
-        let x, attempts = 0;
-        let overlapping = true;
-        
-        while (overlapping && attempts < 30) {
+        let x;
+        let attempts = 0;
+        let tooClose = true;
+
+        while (tooClose && attempts < 60) {
           x = Math.random() * (canvas.width / dpr - PLATFORM_WIDTH);
-          overlapping = false;
-          
-          for (const platform of platforms) {
-            const verticalDist = Math.abs(platform.y - y);
-            const horizontalDist = Math.abs(platform.x - x);
-            
-            if (verticalDist < 50 && horizontalDist < PLATFORM_WIDTH + 40) {
-              overlapping = true;
-              break;
-            }
-          }
+          tooClose = isTooCloseToExistingPlatforms(x, y);
           attempts++;
         }
-        
-        if (!overlapping) {
+
+        if (!tooClose) {
           const isIce = Math.random() > 0.75;
           const newPlatform = {
             x,
             y,
             width: PLATFORM_WIDTH,
-            height: PLATFORM_HEIGHT
+            height: PLATFORM_HEIGHT,
           };
           platforms.push(newPlatform);
-          
+
           if (isIce) {
             icePlatforms.add(newPlatform);
           }
         }
-        
+
         y -= 70 + Math.random() * 30;
       }
     };
+
 
     // Initialize monsters
     const initMonsters = () => {
@@ -563,7 +588,7 @@ const resizeCanvas = () => {
           ) {
             player.velocityY = JUMP_FORCE;
 
-            playJumpSound();
+            //playJumpSound();
 
 
             if (icePlatforms.has(platform)) {
@@ -616,41 +641,33 @@ const resizeCanvas = () => {
       
       const topPlatform = platforms[0];
       if (topPlatform && topPlatform.y > 100 && !finalPlateauReached) {
-        let x, attempts = 0;
-        let overlapping = true;
+        let x;
+        let attempts = 0;
+        let tooClose = true;
         const newY = topPlatform.y - 70 - Math.random() * 30;
-        
-        while (overlapping && attempts < 30) {
+
+        while (tooClose && attempts < 60) {
           x = Math.random() * (width - PLATFORM_WIDTH);
-          overlapping = false;
-          
-          for (let i = 0; i < Math.min(5, platforms.length); i++) {
-            const verticalDist = Math.abs(platforms[i].y - newY);
-            const horizontalDist = Math.abs(platforms[i].x - x);
-            
-            if (verticalDist < 60 && horizontalDist < PLATFORM_WIDTH + 40) {
-              overlapping = true;
-              break;
-            }
-          }
+          tooClose = isTooCloseToExistingPlatforms(x, newY);
           attempts++;
         }
-        
-        if (!overlapping) {
+
+        if (!tooClose) {
           const isIce = Math.random() > 0.75;
           const newPlatform = {
             x,
             y: newY,
             width: PLATFORM_WIDTH,
-            height: PLATFORM_HEIGHT
+            height: PLATFORM_HEIGHT,
           };
           platforms.unshift(newPlatform);
-          
+
           if (isIce) {
             icePlatforms.add(newPlatform);
           }
         }
       }
+
       
       let maxMonsters = 1;
       if (currentScore >= 20000) {
@@ -764,7 +781,7 @@ if (
           if (player.y + player.height <= monster.y + monster.height) {
             player.velocityY = JUMP_FORCE;
 
-            playWeightedMonsterSound();
+            //playWeightedMonsterSound();
 
 
             monsterShakes.set(monster, {
@@ -783,7 +800,7 @@ if (
           } else {
             isGameOverRef.current = true;
             setGameOver(true);
-            playGameOverSound();
+           // playGameOverSound();
             if (currentScore > highScore) {
               setHighScore(Math.floor(currentScore));
             }
@@ -799,7 +816,7 @@ if (
       if (player.y > height + 50) {
         isGameOverRef.current = true;
         setGameOver(true);
-        playGameOverSound();
+        //playGameOverSound();
         if (currentScore > highScore) {
           setHighScore(Math.floor(currentScore));
         }
