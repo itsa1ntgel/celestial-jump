@@ -837,7 +837,7 @@ export default function CelestialJump() {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-start pt-4 pb-4 overflow-hidden">
-      <div className="max-w-md w-full">
+      <div className="max-w-md w-full px-4">
         <div className="mb-4 text-center">
           <h1 className="text-4xl font-light tracking-wider text-gray-800 mb-2">
             ✦ CELESTIAL JUMP ✦
@@ -858,7 +858,7 @@ export default function CelestialJump() {
         <div className="relative bg-white/50 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-white/60">
           <canvas
             ref={canvasRef}
-            className="w-full h-[520px] md:h-[600px] block"
+            className="w-full h-[540px] md:h-[620px] block"
           />
           
           {gameOver && (
