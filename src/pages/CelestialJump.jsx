@@ -196,38 +196,6 @@ const resizeCanvas = () => {
     };
 
     
-        // 平台最小间距（横向 / 纵向）
-    const MIN_HORIZONTAL_GAP = 12; // 水平方向至少留 12px 缝
-    const MIN_VERTICAL_GAP = 35;   // 竖直方向也要留一点距离
-
-    // 检查一个新平台 (x, y) 是否离现有平台太近（包括重叠 & 紧贴）
-    const isTooCloseToExistingPlatforms = (x, y) => {
-      for (const p of platforms) {
-        // 把新平台的矩形放大一点当作“碰撞区”
-        const leftA = x - MIN_HORIZONTAL_GAP;
-        const rightA = x + PLATFORM_WIDTH + MIN_HORIZONTAL_GAP;
-        const topA = y - MIN_VERTICAL_GAP;
-        const bottomA = y + PLATFORM_HEIGHT + MIN_VERTICAL_GAP;
-
-        const leftB = p.x;
-        const rightB = p.x + p.width;
-        const topB = p.y;
-        const bottomB = p.y + p.height;
-
-        // 如果两个扩展矩形有交集，就认为太近
-        const separated =
-          rightA < leftB ||
-          leftA > rightB ||
-          bottomA < topB ||
-          topA > bottomB;
-
-        if (!separated) {
-          return true; // 有一个太近的
-        }
-      }
-      return false; // 和所有平台之间都保持了安全间距
-    };
-
     // Snowflakes
     const snowflakes = [];
     
