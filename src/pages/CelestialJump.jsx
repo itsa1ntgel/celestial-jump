@@ -159,6 +159,43 @@ const resizeCanvas = () => {
     let cameraY = 0;
     let finalPlateauReached = false; // 是否已经到达最终休息区
 
+        // 平台之间的最小间距（防止重叠 / 紧贴）
+    const MIN_HORIZONTAL_GAP = 12; // 水平方向至少留 12px 缝
+    const MIN_VERTICAL_GAP = 35;   // 竖直方向也要留一点距离
+
+    // 所有新平台必须生成在屏幕顶部以上的缓冲区（负数，越小越远离屏幕）
+    // 比如 -200 表示：最顶上的平台如果已经高于 -200，就继续往上生成新平台
+    const SPAWN_BUFFER_Y = -200;
+
+    // 检查一个新平台 (x, y) 是否离现有平台太近（包括重叠 + 紧紧贴着）
+    const isTooCloseToExistingPlatforms = (x, y) => {
+      for (const p of platforms) {
+        // 把新平台的矩形扩展一点，形成“安全区”
+        const leftA = x - MIN_HORIZONTAL_GAP;
+        const rightA = x + PLATFORM_WIDTH + MIN_HORIZONTAL_GAP;
+        const topA = y - MIN_VERTICAL_GAP;
+        const bottomA = y + PLATFORM_HEIGHT + MIN_VERTICAL_GAP;
+
+        const leftB = p.x;
+        const rightB = p.x + p.width;
+        const topB = p.y;
+        const bottomB = p.y + p.height;
+
+        // 如果两个扩展矩形有交集 => 太近了
+        const separated =
+          rightA < leftB ||
+          leftA > rightB ||
+          bottomA < topB ||
+          topA > bottomB;
+
+        if (!separated) {
+          return true; // 有一个平台离得太近
+        }
+      }
+      return false; // 和所有平台都保持了安全间距
+    };
+
+    
         // 平台最小间距（横向 / 纵向）
     const MIN_HORIZONTAL_GAP = 12; // 水平方向至少留 12px 缝
     const MIN_VERTICAL_GAP = 35;   // 竖直方向也要留一点距离
@@ -207,8 +244,8 @@ const resizeCanvas = () => {
       platforms.length = 0;
       icePlatforms.clear();
       const height = canvas.height / dpr;
-      
-      // 初始基准平台
+
+      // 初始基准平台：玩家脚下那块
       platforms.push({
         x: canvas.width / (2 * dpr) - PLATFORM_WIDTH / 2,
         y: height * 0.85,
@@ -216,9 +253,11 @@ const resizeCanvas = () => {
         height: PLATFORM_HEIGHT,
       });
 
+      // 从基准平台往上，一路预生成，到屏幕上方很高的位置
       let y = height * 0.85 - 80;
 
-      while (y > -500) {
+      // 比原来更高一点（例如 -800），这样上方世界更“提前做好”
+      while (y > -800) {
         let x;
         let attempts = 0;
         let tooClose = true;
@@ -247,6 +286,7 @@ const resizeCanvas = () => {
         y -= 70 + Math.random() * 30;
       }
     };
+
 
 
     // Initialize monsters
@@ -639,12 +679,19 @@ const resizeCanvas = () => {
     }
 
       
-      const topPlatform = platforms[0];
-      if (topPlatform && topPlatform.y > 100 && !finalPlateauReached) {
+      // 找出当前“最高”的那块平台（y 最小，越小越靠上）
+      const highestPlatformY = platforms.reduce(
+        (min, p) => (p.y < min ? p.y : min),
+        Infinity
+      );
+
+      // 如果最高的平台已经“离屏幕顶部太近”（> SPAWN_BUFFER_Y），
+      // 就在它的更上方预生成一块新平台（仍然在屏幕外）
+      if (highestPlatformY > SPAWN_BUFFER_Y && !finalPlateauReached) {
         let x;
         let attempts = 0;
         let tooClose = true;
-        const newY = topPlatform.y - 70 - Math.random() * 30;
+        const newY = highestPlatformY - (70 + Math.random() * 30);
 
         while (tooClose && attempts < 60) {
           x = Math.random() * (width - PLATFORM_WIDTH);
@@ -660,13 +707,15 @@ const resizeCanvas = () => {
             width: PLATFORM_WIDTH,
             height: PLATFORM_HEIGHT,
           };
-          platforms.unshift(newPlatform);
+          // 放到数组末尾就行，不依赖顺序
+          platforms.push(newPlatform);
 
           if (isIce) {
             icePlatforms.add(newPlatform);
           }
         }
       }
+
 
       
       let maxMonsters = 1;
@@ -678,70 +727,84 @@ const resizeCanvas = () => {
         maxMonsters = 2;
       }
 
-if (
-    Math.random() > 0.99 && 
-    platforms.length > 0 && 
-    monsters.length < maxMonsters &&
-    !finalPlateauReached
-    ) {
-  const isChinese = Math.random() > 0.5;
-  let newX, attempts = 0;
-  let tooClose = true;
-  const newMonsterY = platforms[0].y - 100;
+      if (
+        Math.random() > 0.99 &&
+        platforms.length > 0 &&
+        monsters.length < maxMonsters &&
+        !finalPlateauReached
+      ) {
+        // 同样基于“最高平台”来决定怪物的生成高度
+        const highestPlatformY = platforms.reduce(
+          (min, p) => (p.y < min ? p.y : min),
+          Infinity
+        );
 
-  // 尝试多次，保证怪物之间不要太近
-  while (tooClose && attempts < 10) {
-    newX = Math.random() * (width - 50);
-    tooClose = false;
+        // 怪物生成在最高平台再往上 120px 的地方
+        const spawnY = highestPlatformY - 120;
 
-    for (const monster of monsters) {
-      const dx = newX - monster.x;
-      const dy = newMonsterY - monster.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+        // 如果这个生成高度已经太接近屏幕顶部（> SPAWN_BUFFER_Y - 40），
+        // 说明再生成就会在可见区附近了，这一帧就先不生成
+        if (spawnY > SPAWN_BUFFER_Y - 40) {
+          // 直接跳过这次生成
+        } else {
+          const isChinese = Math.random() > 0.5;
+          let newX;
+          let attempts = 0;
+          let tooClose = true;
 
-      if (distance < 100) {
-        tooClose = true;
-        break;
+          // 只在水平方向做一点“不要太挤”的处理
+          while (tooClose && attempts < 10) {
+            newX = Math.random() * (width - 50);
+            tooClose = false;
+
+            for (const monster of monsters) {
+              const dx = newX - monster.x;
+              const dy = spawnY - monster.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+
+              if (distance < 100) {
+                tooClose = true;
+                break;
+              }
+            }
+            attempts++;
+          }
+
+          if (!tooClose || attempts === 10) {
+            let selectedChar;
+            if (isChinese) {
+              selectedChar = chineseChars[Math.floor(Math.random() * chineseChars.length)];
+            } else {
+              const availableChars =
+                currentScore >= 8000 ? fluffyChars : fluffyChars.slice(0, 2);
+              selectedChar = availableChars[Math.floor(Math.random() * availableChars.length)];
+
+              // ★ 限制长表情怪最多 2 个
+              const currentLongCount = monsters.filter(
+                (m) => m.type === 'fluffy' && longFluffyChars.includes(m.char)
+              ).length;
+
+              if (longFluffyChars.includes(selectedChar) && currentLongCount >= 2) {
+                const shortFluffyChars = fluffyChars.slice(0, 2);
+                selectedChar =
+                  shortFluffyChars[Math.floor(Math.random() * shortFluffyChars.length)];
+              }
+            }
+
+            monsters.push({
+              x: newX,
+              y: spawnY, // 注意这里用的是 spawnY，而不是原来的 platforms[0].y - 100
+              width: 50,
+              height: 50,
+              type: isChinese ? 'chinese' : 'fluffy',
+              char: selectedChar,
+              color: isChinese ? '#fff' : Math.random() > 0.5 ? '#e0f2fe' : '#fff',
+              bobOffset: Math.random() * Math.PI * 2,
+              rotation: Math.random() * Math.PI * 2,
+            });
+          }
+        }
       }
-    }
-    attempts++;
-  }
-
-  if (!tooClose || attempts === 10) {
-    let selectedChar;
-    if (isChinese) {
-      selectedChar = chineseChars[Math.floor(Math.random() * chineseChars.length)];
-    } else {
-      const availableChars =
-        currentScore >= 8000 ? fluffyChars : fluffyChars.slice(0, 2);
-      selectedChar = availableChars[Math.floor(Math.random() * availableChars.length)];
-
-      // ★ 限制长表情怪最多 2 个
-      const currentLongCount = monsters.filter(
-        (m) => m.type === 'fluffy' && longFluffyChars.includes(m.char)
-      ).length;
-
-      if (longFluffyChars.includes(selectedChar) && currentLongCount >= 2) {
-        // 已经有两个长表情了，就强制换成短表情
-        const shortFluffyChars = fluffyChars.slice(0, 2);
-        selectedChar =
-          shortFluffyChars[Math.floor(Math.random() * shortFluffyChars.length)];
-      }
-    }
-
-    monsters.push({
-      x: newX,
-      y: newMonsterY,
-      width: 50,
-      height: 50,
-      type: isChinese ? 'chinese' : 'fluffy',
-      char: selectedChar,
-      color: isChinese ? '#fff' : Math.random() > 0.5 ? '#e0f2fe' : '#fff',
-      bobOffset: Math.random() * Math.PI * 2,
-      rotation: Math.random() * Math.PI * 2,
-    });
-  }
-}
 
 
 
