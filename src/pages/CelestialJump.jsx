@@ -97,7 +97,6 @@ const ASCII_BACKGROUNDS = [
 const ASCII_PARALLAX = 0.18;
 const MAX_PARTICLES = 40;
 const MAX_FRONT_SNOW = 20;
-const ANGEL_TEST_SEQUENCE = ['thorn', 'blood', 'snow'];
 const LONG_FLUFFY_HITBOX_WIDTH = 80;
 const LONG_FLUFFY_HITBOX_HEIGHT = 60;
 const THORN_TRAIL_MAX = 10;
@@ -112,7 +111,7 @@ export default function CelestialJump() {
   const [shakeActive, setShakeActive] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(true);
   const angelModeRef = useRef('none');
-  const angelTestIndexRef = useRef(0);
+  const angelComboRef = useRef('');
   const particlesRef = useRef(
     Array.from({ length: MAX_PARTICLES }, () => ({ active: false }))
   );
@@ -447,6 +446,35 @@ export default function CelestialJump() {
       }
     };
 
+    const handleAngelTrigger = (char) => {
+      if (char === '雪') {
+        angelModeRef.current = 'snow';
+        angelComboRef.current = '';
+        return;
+      }
+      if (char === '血') {
+        angelModeRef.current = 'blood';
+        angelComboRef.current = '';
+        return;
+      }
+      if (char === '天') {
+        angelComboRef.current = '天';
+        return;
+      }
+      if (char === '使') {
+        angelComboRef.current = angelComboRef.current === '天' ? '天使' : '';
+        return;
+      }
+      if (char === '棘') {
+        if (angelComboRef.current === '天使') {
+          angelModeRef.current = 'thorn';
+        }
+        angelComboRef.current = '';
+        return;
+      }
+      angelComboRef.current = char === '天' ? '天' : '';
+    };
+
     const ensureFrontSnow = (width, height) => {
       const pool = frontSnowRef.current;
       for (let i = 0; i < pool.length; i++) {
@@ -517,16 +545,8 @@ export default function CelestialJump() {
       }
     };
 
-    const cycleAngelTestMode = () => {
-      if (!ANGEL_TEST_SEQUENCE.length) return;
-      angelModeRef.current = ANGEL_TEST_SEQUENCE[angelTestIndexRef.current % ANGEL_TEST_SEQUENCE.length];
-      angelTestIndexRef.current =
-        (angelTestIndexRef.current + 1) % ANGEL_TEST_SEQUENCE.length;
-    };
-
     const handleLanding = (x, y) => {
       emitLandingParticles(angelModeRef.current, x, y);
-      cycleAngelTestMode();
     };
 
     // ========= Canvas / 游戏逻辑 =========
@@ -609,10 +629,11 @@ export default function CelestialJump() {
       platforms.length = 0;
       icePlatforms.clear();
       const height = canvas.height / dpr;
-      angelModeRef.current = ANGEL_TEST_SEQUENCE[0] || 'none';
-      angelTestIndexRef.current = ANGEL_TEST_SEQUENCE.length > 1 ? 1 : 0;
+      angelModeRef.current = 'none';
+      angelComboRef.current = '';
       particlesRef.current.forEach((p) => (p.active = false));
       frontSnowRef.current.forEach((p) => (p.active = false));
+      thornTrailRef.current = [];
 
       // 初始平台
       platforms.push({
@@ -1312,6 +1333,9 @@ export default function CelestialJump() {
             monster.hit = true;
             monsterShakes.set(monster, { startTime: time, duration: 200 });
             handleLanding(player.x + player.width / 2, monster.y);
+            if (monster.type === 'chinese') {
+              handleAngelTrigger(monster.char);
+            }
             if (angelModeRef.current === 'thorn') {
               const speed = Math.hypot(player.velocityX, player.velocityY);
               if (speed > 0.5) {
@@ -1604,8 +1628,8 @@ export default function CelestialJump() {
         const height = canvas.height / dpr;
 
       cameraY = 0;
-      angelModeRef.current = ANGEL_TEST_SEQUENCE[0] || 'none';
-      angelTestIndexRef.current = ANGEL_TEST_SEQUENCE.length > 1 ? 1 : 0;
+      angelModeRef.current = 'none';
+      angelComboRef.current = '';
       particlesRef.current.forEach((p) => (p.active = false));
       frontSnowRef.current.forEach((p) => (p.active = false));
       thornTrailRef.current = [];
