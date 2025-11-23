@@ -706,6 +706,30 @@ export default function CelestialJump() {
     canvas.addEventListener('touchmove', handleTouchMove);
     canvas.addEventListener('touchend', handleTouchEnd);
 
+    const handleHide = () => {
+      if (bgmFadeIntervalRef.current) {
+        clearInterval(bgmFadeIntervalRef.current);
+        bgmFadeIntervalRef.current = null;
+      }
+      if (bgmRef.current) {
+        bgmRef.current.pause();
+        bgmRef.current.currentTime = 0;
+      }
+      bgmStartedRef.current = false;
+    };
+
+    const handleShow = () => {
+      startBgmIfNeededRef.current?.();
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) handleHide();
+      else handleShow();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pagehide', handleHide);
+
     // ========= 绘制 =========
     const drawStar = (x, y, size, rotation) => {
       ctx.save();
@@ -757,6 +781,29 @@ export default function CelestialJump() {
       ctx.arc(0, -size * 0.3, size * 0.2, 0, Math.PI * 2);
       ctx.fill();
 
+      ctx.restore();
+    };
+
+    const drawThornSpikes = (cx, cy, size, time) => {
+      const spikeLen = size * 0.7; // roughly 6-8px when size~8
+      const spikeW = Math.max(1, size * 0.12);
+      const flicker = 0.08 + Math.sin(time * 0.008) * 0.04;
+      ctx.save();
+      ctx.fillStyle = 'rgba(220,220,240,0.9)';
+      ctx.globalAlpha = 0.8 + flicker;
+      const offsets = [
+        [0, -spikeLen], // up
+        [0, spikeLen], // down
+        [-spikeLen, 0], // left
+        [spikeLen, 0], // right
+        [spikeLen * 0.7, -spikeLen * 0.7],
+        [-spikeLen * 0.7, -spikeLen * 0.7],
+        [spikeLen * 0.7, spikeLen * 0.7],
+        [-spikeLen * 0.7, spikeLen * 0.7]
+      ];
+      for (const [ox, oy] of offsets) {
+        ctx.fillRect(cx + ox - spikeW / 2, cy + oy - spikeLen / 2, spikeW, spikeLen);
+      }
       ctx.restore();
     };
 
@@ -1405,28 +1452,19 @@ export default function CelestialJump() {
       });
       ctx.shadowColor = 'transparent';
 
-      if (angelModeRef.current === 'thorn') {
-        const cx = player.x + player.width / 2;
-        const beamTop = player.y - player.height * 1.2;
-        const beamHeight = player.height * 2.5;
-        const flicker = 0.08 + Math.sin(time * 0.005) * 0.04;
+      const cx = player.x + player.width / 2;
+      const cy = player.y + player.height / 2;
+      const starSize = player.width / 2;
 
+      if (angelModeRef.current === 'thorn') {
         ctx.save();
-        ctx.globalAlpha = 0.32 + flicker;
-        ctx.fillStyle = 'rgba(255,236,180,0.35)'; // 外层柔和金光
-        ctx.fillRect(cx - player.width * 0.45, beamTop, player.width * 0.9, beamHeight);
-        ctx.globalAlpha = 0.7 + flicker;
-        ctx.fillStyle = 'rgba(255,247,200,0.9)'; // 内层亮金光
-        ctx.fillRect(cx - player.width * 0.28, beamTop, player.width * 0.56, beamHeight);
+        ctx.globalAlpha = 0.4;
+        drawStar(cx, cy, starSize * 1.12, player.rotation);
         ctx.restore();
+        drawThornSpikes(cx, cy, 7, time);
       }
 
-      drawStar(
-        player.x + player.width / 2,
-        player.y + player.height / 2,
-        player.width / 2,
-        player.rotation
-      );
+      drawStar(cx, cy, starSize, player.rotation);
 
       // 粒子绘制
       drawParticles(ctx, dpr);
@@ -1550,6 +1588,8 @@ export default function CelestialJump() {
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
       canvas.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pagehide', handleHide);
       if (animationId) cancelAnimationFrame(animationId);
 
       if (bgmFadeIntervalRef.current) {
