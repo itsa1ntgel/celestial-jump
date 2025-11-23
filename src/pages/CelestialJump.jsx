@@ -631,7 +631,7 @@ export default function CelestialJump() {
     const PLATFORM_HEIGHT = 12;
     const BOARD_ASPECT = 9 / 16; // width / height ratio for playfield
     const MIN_BOARD_HEIGHT = 520;
-    const MAX_BOARD_HEIGHT = 560;
+    const MAX_BOARD_HEIGHT = 600;
     const DEBUG = false; // 开发阶段快速测试终局
     const FINAL_SCORE = 50000;
     const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
@@ -1086,7 +1086,7 @@ export default function CelestialJump() {
       const rectHeight = wrapper.getBoundingClientRect().height || 0;
       const maxAllowedHeight = Math.min(
         MAX_BOARD_HEIGHT,
-        (window.innerHeight || MAX_BOARD_HEIGHT) - 220
+        (window.innerHeight || MAX_BOARD_HEIGHT) - 180
       );
       const clampedMax = Math.max(MIN_BOARD_HEIGHT, maxAllowedHeight);
       const heightGuess = rectHeight || rawHeight;
@@ -2516,7 +2516,7 @@ export default function CelestialJump() {
           className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4"
           style={{
             aspectRatio: '9 / 16',
-            maxHeight: '560px',
+            maxHeight: '600px',
             minHeight: '520px',
             maxWidth: '420px',
             width: '100%',
