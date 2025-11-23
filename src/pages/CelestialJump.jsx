@@ -962,44 +962,6 @@ export default function CelestialJump() {
       angelComboRef.current = char === '天' ? '天' : '';
     };
 
-    const attemptResumeBgm = () => {
-      if (showNameOverlayRef.current) return;
-      ensureBgmPlaying();
-    };
-
-    const handleNameSubmit = () => {
-      const name = nameInput.trim();
-      if (name.length < 1) {
-        setNameError('name too short');
-        return;
-      }
-      if (name.length > 16) {
-        setNameError('name too long');
-        return;
-      }
-      setPlayerName(name);
-      localStorage.setItem(NAME_STORAGE_KEY, name);
-      setNameError('');
-      setOverlayClosing(true);
-      setTimeout(() => {
-        showNameOverlayRef.current = false;
-        setShowNameOverlay(false);
-        setOverlayClosing(false);
-        attemptResumeBgm();
-      }, 320);
-    };
-
-    const handleOpenNameOverlay = () => {
-      setNameInput(playerName || '');
-      setNameError('');
-      showNameOverlayRef.current = true;
-      setOverlayClosing(false);
-      setShowNameOverlay(true);
-      if (bgmRef.current) {
-        bgmRef.current.pause();
-      }
-    };
-
     const ensureFrontSnow = (width, height) => {
       const pool = frontSnowRef.current;
       for (let i = 0; i < pool.length; i++) {
@@ -2278,44 +2240,6 @@ export default function CelestialJump() {
       ensureBgmPlayingRef.current?.();
     }
   }, [showNameOverlay]);
-
-  const handleNameSubmit = () => {
-    const name = nameInput.trim();
-    if (name.length < 1) {
-      setNameError('name too short');
-      return;
-    }
-    if (name.length > 16) {
-      setNameError('name too long');
-      return;
-    }
-    setPlayerName(name);
-    localStorage.setItem(NAME_STORAGE_KEY, name);
-    setNameError('');
-    setOverlayClosing(true);
-    setTimeout(() => {
-      showNameOverlayRef.current = false;
-      setShowNameOverlay(false);
-      setOverlayClosing(false);
-      ensureBgmPlayingRef.current?.();
-    }, 320);
-  };
-
-  const handleOpenNameOverlay = () => {
-    setNameInput(playerName || '');
-    setNameError('');
-    showNameOverlayRef.current = true;
-    setOverlayClosing(false);
-    setShowNameOverlay(true);
-    if (bgmRef.current) bgmRef.current.pause();
-  };
-
-  const handleNameKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleNameSubmit();
-    }
-  };
 
   const handleRestart = () => {
     startBgmIfNeededRef.current?.();
