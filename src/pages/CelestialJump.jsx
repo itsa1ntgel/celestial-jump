@@ -379,17 +379,23 @@ export default function CelestialJump() {
 
     const emitLandingParticles = (mode, x, y) => {
       if (mode === 'thorn') {
-        const count = 3 + Math.floor(Math.random() * 3);
+        const count = 3 + Math.floor(Math.random() * 5); // 3-7
         for (let i = 0; i < count; i++) {
+          const dir = Math.random() < 0.5 ? -1 : 1;
+          const angle = (15 + Math.random() * 30) * (Math.PI / 180); // 15°-45°
+          const speed = 180 + Math.random() * 120;
+          const vx = dir * Math.cos(angle) * speed;
+          const vy = -Math.sin(angle) * speed;
           spawnParticle({
             x,
             y,
-            vx: (Math.random() * 160 - 80),
-            vy: -(60 + Math.random() * 80),
-            gravity: 320,
-            maxLife: 0.6,
-            size: 2 + Math.random() * 2,
-            color: 'rgba(255,255,255,0.9)',
+            vx,
+            vy,
+            gravity: 520,
+            maxLife: 0.3 + Math.random() * 0.2,
+            w: 1 + Math.random() * 1,
+            h: 6 + Math.random() * 4,
+            color: 'rgba(220,220,240,0.9)',
             kind: 'thorn'
           });
         }
@@ -490,7 +496,9 @@ export default function CelestialJump() {
         ctx.globalAlpha = alpha;
         if (p.kind === 'thorn') {
           ctx.fillStyle = p.color;
-          ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size * 1.8, p.size);
+          const w = p.w ?? p.size ?? 2;
+          const h = p.h ?? p.size ?? 6;
+          ctx.fillRect(p.x - w / 2, p.y - h / 2, w, h);
         } else if (p.kind === 'snow') {
           ctx.fillStyle = p.color;
           ctx.fillRect(p.x, p.y, p.size, p.size);
@@ -1131,7 +1139,7 @@ export default function CelestialJump() {
             }
 
             if (longFluffyChars.includes(selectedChar)) {
-              spawnWidth = LONG_FLUFFY_HITBOX_WIDTH;
+              spawnWidth = LONG_FLUFFY_HITBOX_WIDTH + 10; // 扩大命中范围覆盖表情左侧
               spawnHeight = LONG_FLUFFY_HITBOX_HEIGHT;
             }
           }
@@ -1396,6 +1404,22 @@ export default function CelestialJump() {
         }
       });
       ctx.shadowColor = 'transparent';
+
+      if (angelModeRef.current === 'thorn') {
+        const cx = player.x + player.width / 2;
+        const beamTop = player.y - player.height * 1.2;
+        const beamHeight = player.height * 2.5;
+        const flicker = 0.08 + Math.sin(time * 0.005) * 0.04;
+
+        ctx.save();
+        ctx.globalAlpha = 0.35 + flicker;
+        ctx.fillStyle = 'rgba(230,235,255,0.3)';
+        ctx.fillRect(cx - 7, beamTop, 14, beamHeight);
+        ctx.globalAlpha = 0.7 + flicker;
+        ctx.fillStyle = 'rgba(230,235,255,0.9)';
+        ctx.fillRect(cx - 3, beamTop, 6, beamHeight);
+        ctx.restore();
+      }
 
       drawStar(
         player.x + player.width / 2,
