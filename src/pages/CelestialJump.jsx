@@ -296,7 +296,13 @@ export default function CelestialJump() {
       }
     };
 
+    const initMonsters = () => {
+      monsters.length = 0;
+      monsterShakes.clear();
+    };
+
     initPlatforms();
+    initMonsters();
 
     const keys = {};
     let touchStartX = 0;
