@@ -382,11 +382,11 @@ export default function CelestialJump() {
 
     const emitLandingParticles = (mode, x, y) => {
       if (mode === 'thorn') {
-        const count = 3 + Math.floor(Math.random() * 5); // 3-7
+        const count = 5 + Math.floor(Math.random() * 4); // 5-8
         for (let i = 0; i < count; i++) {
           const dir = Math.random() < 0.5 ? -1 : 1;
           const angle = (15 + Math.random() * 30) * (Math.PI / 180); // 15°-45°
-          const speed = 180 + Math.random() * 120;
+          const speed = 220 + Math.random() * 160;
           const vx = dir * Math.cos(angle) * speed;
           const vy = -Math.sin(angle) * speed;
           spawnParticle({
@@ -394,7 +394,7 @@ export default function CelestialJump() {
             y,
             vx,
             vy,
-            gravity: 520,
+            gravity: 620,
             maxLife: 0.3 + Math.random() * 0.2,
             w: 1 + Math.random() * 1,
             h: 6 + Math.random() * 4,
