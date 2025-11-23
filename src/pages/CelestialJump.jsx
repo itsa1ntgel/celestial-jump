@@ -1412,12 +1412,12 @@ export default function CelestialJump() {
         const flicker = 0.08 + Math.sin(time * 0.005) * 0.04;
 
         ctx.save();
-        ctx.globalAlpha = 0.35 + flicker;
-        ctx.fillStyle = 'rgba(230,235,255,0.3)';
-        ctx.fillRect(cx - 7, beamTop, 14, beamHeight);
-        ctx.globalAlpha = 0.7 + flicker;
-        ctx.fillStyle = 'rgba(230,235,255,0.9)';
-        ctx.fillRect(cx - 3, beamTop, 6, beamHeight);
+        ctx.globalAlpha = 0.32 + flicker;
+        ctx.fillStyle = 'rgba(210,220,235,0.35)';
+        ctx.fillRect(cx - player.width * 0.45, beamTop, player.width * 0.9, beamHeight);
+        ctx.globalAlpha = 0.68 + flicker;
+        ctx.fillStyle = 'rgba(225,235,250,0.9)';
+        ctx.fillRect(cx - player.width * 0.28, beamTop, player.width * 0.56, beamHeight);
         ctx.restore();
       }
 
