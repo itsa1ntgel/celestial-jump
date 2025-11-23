@@ -1773,10 +1773,13 @@ export default function CelestialJump() {
               enterFinalMode(platform);
             }
             if (!finalCameraStarted) {
-              const desiredMaxY = height * 0.72;
-              if (player.y > desiredMaxY) {
-                const dy = desiredMaxY - player.y;
-                applyCameraShift(dy);
+              const bottomClamp = height * 0.9;
+              if (platform.y <= bottomClamp) {
+                const desiredMaxY = height * 0.72;
+                if (player.y > desiredMaxY) {
+                  const dy = desiredMaxY - player.y;
+                  applyCameraShift(dy);
+                }
               }
             }
             if (angelModeRef.current === 'thorn') {
