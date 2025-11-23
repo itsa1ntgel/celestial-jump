@@ -94,7 +94,7 @@ const ASCII_BACKGROUNDS = [
   ]
 ];
 
-const ASCII_PARALLAX = 0.45;
+const ASCII_PARALLAX = 0.35;
 
 export default function CelestialJump() {
   const canvasRef = useRef(null);
@@ -422,9 +422,11 @@ export default function CelestialJump() {
     const snowflakes = [];
     const monsters = [];
     const chineseChars = ['天', '使', '棘', '雪', '血', '死', '亡'];
-    const fluffyChars = ['´ཀ`', '𓉸ྀི', 'ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
-    const longFluffyChars = ['ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
-    const monsterShakes = new Map();
+const fluffyChars = ['´ཀ`', '𓉸ྀི', 'ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
+const longFluffyChars = ['ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
+const monsterShakes = new Map();
+const LONG_FLUFFY_HITBOX_WIDTH = 80;
+const LONG_FLUFFY_HITBOX_HEIGHT = 60;
 
     const initPlatforms = () => {
       platforms.length = 0;
@@ -927,8 +929,43 @@ export default function CelestialJump() {
           let attempts = 0;
           let tooClose = true;
 
+          let selectedChar;
+          let spawnWidth = 50;
+          let spawnHeight = 50;
+          if (isChinese) {
+            const roll = Math.random();
+            if (roll < 0.2) selectedChar = '天';
+            else if (roll < 0.4) selectedChar = '使';
+            else selectedChar = chineseChars[Math.floor(Math.random() * chineseChars.length)];
+          } else {
+            const availableChars =
+              currentScore >= 8000 ? fluffyChars : fluffyChars.slice(0, 2);
+            selectedChar =
+              availableChars[Math.floor(Math.random() * availableChars.length)];
+
+            const currentLongCount = monsters.filter(
+              (m) => m.type === 'fluffy' && longFluffyChars.includes(m.char)
+            ).length;
+
+            if (
+              longFluffyChars.includes(selectedChar) &&
+              currentLongCount >= 2
+            ) {
+              const shortFluffyChars = fluffyChars.slice(0, 2);
+              selectedChar =
+                shortFluffyChars[
+                Math.floor(Math.random() * shortFluffyChars.length)
+                ];
+            }
+
+            if (longFluffyChars.includes(selectedChar)) {
+              spawnWidth = LONG_FLUFFY_HITBOX_WIDTH;
+              spawnHeight = LONG_FLUFFY_HITBOX_HEIGHT;
+            }
+          }
+
           while (tooClose && attempts < 10) {
-            newX = Math.random() * (width - 50);
+            newX = Math.random() * Math.max(10, width - spawnWidth);
             tooClose = false;
 
             for (const monster of monsters) {
@@ -944,37 +981,12 @@ export default function CelestialJump() {
           }
 
           if (!tooClose || attempts === 10) {
-            let selectedChar;
-            if (isChinese) {
-              selectedChar =
-                chineseChars[Math.floor(Math.random() * chineseChars.length)];
-            } else {
-              const availableChars =
-                currentScore >= 8000 ? fluffyChars : fluffyChars.slice(0, 2);
-              selectedChar =
-                availableChars[Math.floor(Math.random() * availableChars.length)];
-
-              const currentLongCount = monsters.filter(
-                (m) => m.type === 'fluffy' && longFluffyChars.includes(m.char)
-              ).length;
-
-              if (
-                longFluffyChars.includes(selectedChar) &&
-                currentLongCount >= 2
-              ) {
-                const shortFluffyChars = fluffyChars.slice(0, 2);
-                selectedChar =
-                  shortFluffyChars[
-                  Math.floor(Math.random() * shortFluffyChars.length)
-                  ];
-              }
-            }
 
             monsters.push({
               x: newX,
               y: spawnY,
-              width: 50,
-              height: 50,
+              width: spawnWidth,
+              height: spawnHeight,
               type: isChinese ? 'chinese' : 'fluffy',
               char: selectedChar,
               color: isChinese
