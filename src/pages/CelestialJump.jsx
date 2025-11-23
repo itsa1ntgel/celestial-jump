@@ -29,9 +29,8 @@ export default function CelestialJump() {
   const stompPoolRef = useRef(null);
   const lastMonsterSoundRef = useRef(0);
   const lastStompIndexRef = useRef(-1);
-  const gameOverPoolRef = useRef(null);
-  const gameOverPlayedRef = useRef(false);
   const shakeTimeoutRef = useRef(null);
+  const warmStompedRef = useRef(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -59,7 +58,32 @@ export default function CelestialJump() {
         } catch (e) { }
       };
 
-      return { pool, play };
+      const warm = () => {
+        pool.forEach((audio) => {
+          const original = audio.volume;
+          audio.volume = 0;
+          try {
+            const p = audio.play();
+            if (p && p.then) {
+              p.then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.volume = original;
+              }).catch(() => {
+                audio.volume = original;
+              });
+            } else {
+              audio.pause();
+              audio.currentTime = 0;
+              audio.volume = original;
+            }
+          } catch (e) {
+            audio.volume = original;
+          }
+        });
+      };
+
+      return { pool, play, warm };
     };
 
     // ========= BGM：只创建，不自动播放 =========
@@ -78,7 +102,6 @@ export default function CelestialJump() {
       '/sounds/jump_on_monsters_sound_laser.mp3'
     ];
     stompPoolRef.current = stompSounds.map((path) => createAudioPool(path, 0.55, 3));
-      gameOverPoolRef.current = createAudioPool('/sounds/game_over_sound_kyu.mp3', 0.65, 2);
 
     // 用户第一次按键 / 触摸时启动 BGM
     const startBgmIfNeeded = () => {
@@ -134,12 +157,21 @@ export default function CelestialJump() {
       }, stepDuration);
     };
 
+    const warmStompSounds = () => {
+      if (warmStompedRef.current) return;
+      warmStompedRef.current = true;
+      const pools = stompPoolRef.current;
+      if (!pools) return;
+      pools.forEach((p) => p?.warm?.());
+    };
+
     const playStompSound = () => {
+      warmStompSounds();
       const pools = stompPoolRef.current;
       if (!pools || pools.length === 0) return;
 
       const now = performance.now();
-      if (now - lastMonsterSoundRef.current < 80) return; // 简单冷却
+      if (now - lastMonsterSoundRef.current < 140) return; // 更长冷却避免双触发
       lastMonsterSoundRef.current = now;
 
       let idx = Math.floor(Math.random() * pools.length);
@@ -148,12 +180,6 @@ export default function CelestialJump() {
       }
       lastStompIndexRef.current = idx;
       pools[idx].play();
-    };
-
-    const playGameOverSound = () => {
-      const pool = gameOverPoolRef.current;
-      if (!pool) return;
-      pool.play();
     };
 
     const triggerScreenShake = () => {
@@ -349,6 +375,7 @@ export default function CelestialJump() {
 
     const handleKeyDown = (e) => {
       startBgmIfNeeded();
+      warmStompSounds();
       keys[e.key] = true;
     };
 
@@ -358,6 +385,7 @@ export default function CelestialJump() {
 
     const handleTouchStart = (e) => {
       startBgmIfNeeded();
+      warmStompSounds();
       touchStartX = e.touches[0].clientX;
       touchX = e.touches[0].clientX;
     };
@@ -372,6 +400,7 @@ export default function CelestialJump() {
 
     const handleGlobalInteraction = () => {
       startBgmIfNeeded();
+      warmStompSounds();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -600,10 +629,6 @@ export default function CelestialJump() {
       deathAnimationRef.current.pendingGameOver = false;
       setGameOver(true);
       fadeOutBgm(500);
-      if (!gameOverPlayedRef.current) {
-        playGameOverSound();
-        gameOverPlayedRef.current = true;
-      }
       if (currentScore > highScore) {
         setHighScore(Math.floor(currentScore));
       }
@@ -1081,9 +1106,9 @@ export default function CelestialJump() {
         player.x = width / 2 - PLAYER_SIZE / 2;
         player.y = height * 0.7;
         player.velocityY = 0;
-        player.velocityX = 0;
-        player.rotation = 0;
-        player.rotationSpeed = 0.05;
+      player.velocityX = 0;
+      player.rotation = 0;
+      player.rotationSpeed = 0.05;
       deathAnimationRef.current = {
         active: false,
         startTime: 0,
@@ -1091,7 +1116,6 @@ export default function CelestialJump() {
         pendingGameOver: false,
         cause: null
       };
-      gameOverPlayedRef.current = false;
       setShakeActive(false);
       if (shakeTimeoutRef.current) {
         clearTimeout(shakeTimeoutRef.current);
