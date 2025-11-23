@@ -1887,9 +1887,9 @@ export default function CelestialJump() {
       if (asciiBgRef.current) {
         const { bitmap, width: bw, height: bh, worldY, align } = asciiBgRef.current;
         const screenY = worldY + cameraY * ASCII_PARALLAX;
-        let screenX = (width - bw) / 2 + 6;
+        let screenX = Math.max((width - bw) / 2, 0);
         if (align === 'right') {
-          screenX = Math.max(0, width - bw - 10);
+          screenX = Math.max(width - bw - 4, 0);
         }
 
         if (screenY > height) {
