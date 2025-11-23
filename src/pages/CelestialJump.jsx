@@ -1330,13 +1330,25 @@ export default function CelestialJump() {
       <div className="max-w-md w-full px-4 relative z-20">
         {/* 顶部标题：上下两行 + 左右大星星 */}
         <div className="mt-1 mb-3 flex items-center justify-center gap-5">
-          <span className="text-[2.6rem] md:text-[3.15rem] text-slate-800 leading-none">✦</span>
+          <span
+            className="text-[2.3rem] md:text-[2.6rem] text-slate-800 leading-none inline-block"
+            style={{ transform: 'rotate(-12deg)' }}
+            aria-hidden
+          >
+            ♫
+          </span>
           <h1 className="font-henny-penny text-[2.2rem] md:text-[2.6rem] leading-[1.05] tracking-[0.28em] text-slate-900 text-center drop-shadow-sm">
             CELESTIAL
             <br />
             JUMP
           </h1>
-          <span className="text-[2.6rem] md:text-[3.15rem] text-slate-800 leading-none">✦</span>
+          <span
+            className="text-[2.3rem] md:text-[2.6rem] text-slate-800 leading-none inline-block"
+            style={{ transform: 'rotate(12deg)' }}
+            aria-hidden
+          >
+            ♫
+          </span>
         </div>
 
         {/* 分数栏 */}
@@ -1377,12 +1389,12 @@ export default function CelestialJump() {
             <div className="absolute inset-0 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center">
               <div className="text-center space-y-6 px-8">
                 <div className="text-2xl mb-4 text-gray-600">ִ𝄞</div>
-                <h2 className="text-3xl font-light text-gray-800 tracking-wide">
-              {score < 500
-                ? 'are you retarded or sum?'
-                : score < 2000
-                  ? "you can't be real"
-                  : score < 5000
+                <h2 className="text-3xl font-normal text-gray-800 tracking-wide font-henny-penny">
+                  {score < 500
+                    ? 'are you retarded or sum?'
+                    : score < 2000
+                      ? "you can't be real"
+                      : score < 5000
                     ? 'not so smart'
                     : score >= 40000
                       ? 'lets die in a beautiful winter'
