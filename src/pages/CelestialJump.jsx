@@ -100,6 +100,8 @@ const MAX_FRONT_SNOW = 20;
 const ANGEL_TEST_SEQUENCE = ['thorn', 'blood', 'snow'];
 const LONG_FLUFFY_HITBOX_WIDTH = 80;
 const LONG_FLUFFY_HITBOX_HEIGHT = 60;
+const THORN_TRAIL_MAX = 6;
+const THORN_TRAIL_MAX_LIFE = 0.4;
 
 export default function CelestialJump() {
   const canvasRef = useRef(null);
@@ -117,6 +119,7 @@ export default function CelestialJump() {
   const frontSnowRef = useRef(
     Array.from({ length: MAX_FRONT_SNOW }, () => ({ active: false }))
   );
+  const thornTrailRef = useRef([]);
 
   const gameStateRef = useRef(null);
   const isGameOverRef = useRef(false);
@@ -807,6 +810,16 @@ export default function CelestialJump() {
       ctx.restore();
     };
 
+    const updateThornTrail = (dt) => {
+      const trail = thornTrailRef.current;
+      for (let i = trail.length - 1; i >= 0; i--) {
+        trail[i].life += dt;
+        if (trail[i].life >= THORN_TRAIL_MAX_LIFE) {
+          trail.splice(i, 1);
+        }
+      }
+    };
+
     const drawPlatform = (platform, isIce) => {
       if (isIce) {
         const gradient = ctx.createLinearGradient(
@@ -1042,6 +1055,20 @@ export default function CelestialJump() {
       player.y += player.velocityY;
       player.rotation += player.rotationSpeed;
 
+      if (angelModeRef.current === 'thorn') {
+        const speed = Math.hypot(player.velocityX, player.velocityY);
+        if (speed > 0.8) {
+          const trail = thornTrailRef.current;
+          trail.push({
+            x: player.x + player.width / 2,
+            y: player.y + player.height / 2,
+            life: 0,
+            speed
+          });
+          if (trail.length > THORN_TRAIL_MAX) trail.shift();
+        }
+      }
+
       if (player.x < -player.width) player.x = width;
       if (player.x > width) player.x = -player.width;
 
@@ -1057,6 +1084,19 @@ export default function CelestialJump() {
           ) {
             player.velocityY = JUMP_FORCE;
             handleLanding(player.x + player.width / 2, platform.y);
+            if (angelModeRef.current === 'thorn') {
+              const speed = Math.hypot(player.velocityX, player.velocityY);
+              if (speed > 0.8) {
+                const trail = thornTrailRef.current;
+                trail.push({
+                  x: player.x + player.width / 2,
+                  y: player.y + player.height / 2,
+                  life: 0,
+                  speed
+                });
+                if (trail.length > THORN_TRAIL_MAX) trail.shift();
+              }
+            }
 
             if (icePlatforms.has(platform)) {
               icePlatforms.delete(platform);
@@ -1272,6 +1312,19 @@ export default function CelestialJump() {
             monster.hit = true;
             monsterShakes.set(monster, { startTime: time, duration: 200 });
             handleLanding(player.x + player.width / 2, monster.y);
+            if (angelModeRef.current === 'thorn') {
+              const speed = Math.hypot(player.velocityX, player.velocityY);
+              if (speed > 0.8) {
+                const trail = thornTrailRef.current;
+                trail.push({
+                  x: player.x + player.width / 2,
+                  y: player.y + player.height / 2,
+                  life: 0,
+                  speed
+                });
+                if (trail.length > THORN_TRAIL_MAX) trail.shift();
+              }
+            }
 
             setTimeout(() => {
               const idx = monsters.indexOf(monster);
@@ -1301,6 +1354,7 @@ export default function CelestialJump() {
       }
 
       updateParticles(dt);
+      updateThornTrail(dt);
 
       // ASCII 背景触发：达到阈值时若无背景则直接生成
       const asciiThreshold = 1000;
@@ -1402,6 +1456,21 @@ export default function CelestialJump() {
           ctx.fillRect(p.x, p.y, p.size || 1.5, p.size || 1.5);
         });
         ctx.restore();
+      }
+
+      // 棘形态残影
+      if (angelModeRef.current === 'thorn' && thornTrailRef.current.length) {
+        const baseSize = player.width / 2;
+        thornTrailRef.current.forEach((t) => {
+          const alpha = Math.max(0, 1 - t.life / THORN_TRAIL_MAX_LIFE);
+          const stretch = Math.min(0.35, (t.speed || 0) * 0.015);
+          ctx.save();
+          ctx.globalAlpha = 0.6 * alpha;
+          ctx.translate(t.x, t.y);
+          ctx.scale(1 + stretch, 1 - stretch * 0.3);
+          drawStar(0, 0, baseSize * 0.9, player.rotation);
+          ctx.restore();
+        });
       }
 
       // ASCII 背景：居中，随 cameraY 被动滚动
@@ -1539,6 +1608,7 @@ export default function CelestialJump() {
       angelTestIndexRef.current = ANGEL_TEST_SEQUENCE.length > 1 ? 1 : 0;
       particlesRef.current.forEach((p) => (p.active = false));
       frontSnowRef.current.forEach((p) => (p.active = false));
+      thornTrailRef.current = [];
 
       player.x = width / 2 - PLAYER_SIZE / 2;
       player.y = height * 0.7;
