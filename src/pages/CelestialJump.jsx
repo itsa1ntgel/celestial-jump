@@ -2497,6 +2497,11 @@ export default function CelestialJump() {
           {gameOver && (
             <div className="absolute inset-0 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center">
               <div className="text-center space-y-6 px-8">
+                {playerName && (
+                  <div className="text-sm font-semibold text-gray-600 tracking-[0.2em] uppercase">
+                    {playerName}
+                  </div>
+                )}
                 <h2 className="text-3xl font-normal text-gray-800 tracking-wide font-henny-penny">
                   {score < 500
                     ? 'are you retarded or sum?'
