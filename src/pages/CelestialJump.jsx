@@ -2058,11 +2058,15 @@ export default function CelestialJump() {
         ctx.font = '12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        ctx.lineWidth = 2.4;
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.strokeText(playerName, cx, player.y - 6);
-        ctx.fillStyle = 'rgba(0,0,0,0.9)';
-        ctx.fillText(playerName, cx, player.y - 6);
+        const labelY = player.y - 10;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+        ctx.strokeText(playerName, cx, labelY);
+        ctx.lineWidth = 1.4;
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.strokeText(playerName, cx, labelY);
+        ctx.fillStyle = 'rgba(0,0,0,0.92)';
+        ctx.fillText(playerName, cx, labelY);
         ctx.restore();
       }
 
