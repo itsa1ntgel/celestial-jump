@@ -493,7 +493,8 @@ const THORN_TRAIL_MAX = 10;
 const THORN_TRAIL_MAX_LIFE = 0.6;
 const ASCII_CHECK_MIN = 1000;
 const ASCII_CHECK_MAX = 2000;
-const ASCII_TRIGGER_CHANCE = 0.2;
+const ASCII_TRIGGER_CHANCE = 0.15;
+const NAME_STORAGE_KEY = 'celestialJump_playerName';
 
 export default function CelestialJump() {
   const canvasRef = useRef(null);
@@ -503,6 +504,11 @@ export default function CelestialJump() {
   const [gameOver, setGameOver] = useState(false);
   const [shakeActive, setShakeActive] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(true);
+  const [playerName, setPlayerName] = useState('');
+  const [showNameOverlay, setShowNameOverlay] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [overlayClosing, setOverlayClosing] = useState(false);
   const angelModeRef = useRef('none');
   const angelComboRef = useRef('');
   const particlesRef = useRef(
@@ -513,6 +519,7 @@ export default function CelestialJump() {
   );
   const thornTrailRef = useRef([]);
   const nextAsciiCheckRef = useRef(ASCII_CHECK_MIN);
+  const showNameOverlayRef = useRef(false);
 
   const gameStateRef = useRef(null);
   const isGameOverRef = useRef(false);
@@ -545,6 +552,16 @@ export default function CelestialJump() {
     if (!canvas) return;
     const snowCanvas = snowCanvasRef.current;
     const snowCtx = snowCanvas?.getContext('2d');
+
+    const savedName = localStorage.getItem(NAME_STORAGE_KEY);
+    if (savedName && savedName.trim()) {
+      setPlayerName(savedName.trim());
+      setShowNameOverlay(false);
+      showNameOverlayRef.current = false;
+    } else {
+      setShowNameOverlay(true);
+      showNameOverlayRef.current = true;
+    }
 
     // ========= 工具函数：音效池 =========
     const createAudioPool = (path, volume = 1, poolSize = 3) => {
@@ -832,16 +849,16 @@ export default function CelestialJump() {
           kind: 'cross'
         });
       } else if (mode === 'snow') {
-        const count = 6 + Math.floor(Math.random() * 4); // 6-9 更丰富
+        const count = 8 + Math.floor(Math.random() * 5); // 8-12
         for (let i = 0; i < count; i++) {
           spawnParticle({
             x,
             y,
-            vx: (Math.random() * 50 - 25),
-            vy: -(60 + Math.random() * 40),
-            gravity: 160,
-            maxLife: 0.7 + Math.random() * 0.15,
-            size: 2 + Math.random() * 1.5,
+            vx: (Math.random() * 60 - 30),
+            vy: -(80 + Math.random() * 50),
+            gravity: 180,
+            maxLife: 0.8 + Math.random() * 0.2,
+            size: 2.2 + Math.random() * 1.8,
             color: 'rgba(255,255,255,0.85)',
             kind: 'snow'
           });
@@ -1449,6 +1466,7 @@ export default function CelestialJump() {
     };
 
     const updateGame = (time) => {
+      if (showNameOverlayRef.current) return;
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
       const dt = FIXED_TIMESTEP / 1000;
