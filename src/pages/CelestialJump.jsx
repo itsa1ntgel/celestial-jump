@@ -1040,7 +1040,7 @@ export default function CelestialJump() {
         const pick = Math.floor(Math.random() * ASCII_BACKGROUNDS.length);
         const lines = ASCII_BACKGROUNDS[pick];
         const baked = bakeAscii(lines);
-        const spawnWorldY = cameraY - baked.height - 200; // 生成在视野上方
+        const spawnWorldY = -baked.height - 240; // 固定世界坐标，先藏在屏幕上方
         asciiBgRef.current = { ...baked, worldY: spawnWorldY };
         asciiPendingRef.current = true;
       }
@@ -1335,7 +1335,7 @@ export default function CelestialJump() {
             style={{ transform: 'rotate(-12deg)' }}
             aria-hidden
           >
-            ♫
+            𝄞
           </span>
           <h1 className="font-henny-penny text-[2.2rem] md:text-[2.6rem] leading-[1.05] tracking-[0.28em] text-slate-900 text-center drop-shadow-sm">
             CELESTIAL
@@ -1347,7 +1347,7 @@ export default function CelestialJump() {
             style={{ transform: 'rotate(12deg)' }}
             aria-hidden
           >
-            ♫
+            𝄞
           </span>
         </div>
 
@@ -1388,7 +1388,6 @@ export default function CelestialJump() {
           {gameOver && (
             <div className="absolute inset-0 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center">
               <div className="text-center space-y-6 px-8">
-                <div className="text-2xl mb-4 text-gray-600">ִ𝄞</div>
                 <h2 className="text-3xl font-normal text-gray-800 tracking-wide font-henny-penny">
                   {score < 500
                     ? 'are you retarded or sum?'
@@ -1416,7 +1415,7 @@ export default function CelestialJump() {
             </div>
             <Button
               onClick={handleRestart}
-              className="bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black text-white px-8 py-6 rounded-full text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              className="bg-white/40 text-gray-900 px-8 py-6 rounded-full text-lg font-semibold shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-white/70 hover:bg-white/55 hover:shadow-[0_12px_36px_rgba(0,0,0,0.16)] backdrop-blur-md transition-all duration-300"
               style={{ fontFamily: '"Arial Rounded MT Bold","Arial Rounded MT","Arial",sans-serif' }}
             >
               <RotateCcw className="w-5 h-5 mr-2" />
