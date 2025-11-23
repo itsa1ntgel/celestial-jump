@@ -1066,7 +1066,7 @@ export default function CelestialJump() {
   const PLAYER_SIZE = 30;
   const PLATFORM_WIDTH = 80;
   const PLATFORM_HEIGHT = 12;
-  const DEBUG = true; // 开发阶段快速测试终局
+  const DEBUG = false; // 开发阶段快速测试终局
   const FINAL_SCORE = 50000;
   const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
   const FINAL_TEST_SCORE = 46000;
