@@ -94,7 +94,7 @@ const ASCII_BACKGROUNDS = [
   ]
 ];
 
-const ASCII_PARALLAX = 0.65;
+const ASCII_PARALLAX = 0.45;
 
 export default function CelestialJump() {
   const canvasRef = useRef(null);
@@ -266,6 +266,29 @@ export default function CelestialJump() {
     };
 
     startBgmIfNeededRef.current = startBgmIfNeeded;
+
+    const playBgmFromStart = () => {
+      if (!musicEnabledRef.current) return;
+      const audio = bgmRef.current;
+      if (!audio) return;
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = BGM_VOLUME;
+        const p = audio.play();
+        if (p && p.then) {
+          p.then(() => {
+            bgmStartedRef.current = true;
+          }).catch(() => {
+            bgmStartedRef.current = false;
+          });
+        } else {
+          bgmStartedRef.current = true;
+        }
+      } catch (e) {
+        bgmStartedRef.current = false;
+      }
+    };
 
     // game over 时 0.5s 渐隐 BGM
     const fadeOutBgm = (durationMs = 500) => {
@@ -1129,7 +1152,7 @@ export default function CelestialJump() {
       if (asciiBgRef.current) {
         const { bitmap, width: bw, height: bh, worldY } = asciiBgRef.current;
         const screenY = worldY + cameraY * ASCII_PARALLAX;
-        const screenX = (width - bw) / 2;
+        const screenX = (width - bw) / 2 + 6;
 
         if (screenY > height) {
           asciiBgRef.current = null;
@@ -1234,6 +1257,7 @@ export default function CelestialJump() {
         bgmStartedRef.current = false;
         musicEnabledRef.current = true;
         setMusicEnabled(true);
+        playBgmFromStart();
 
         isGameOverRef.current = false;
         setGameOver(false);
@@ -1351,7 +1375,7 @@ export default function CelestialJump() {
                   bgmStartedRef.current = false;
                 }
               } else {
-                startBgmIfNeededRef.current?.();
+                playBgmFromStart();
               }
             }}
             className="transition-transform duration-200 focus:outline-none"
@@ -1382,7 +1406,7 @@ export default function CelestialJump() {
                   bgmStartedRef.current = false;
                 }
               } else {
-                startBgmIfNeededRef.current?.();
+                playBgmFromStart();
               }
             }}
             className="transition-transform duration-200 focus:outline-none"
