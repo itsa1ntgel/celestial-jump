@@ -1740,6 +1740,15 @@ export default function CelestialJump() {
       player.y += player.velocityY;
       player.rotation += player.rotationSpeed;
 
+      // 保持视野中部的舒适构图，避免玩家停在底边附近
+      if (!finalCameraStarted) {
+        const desiredMaxY = height * 0.72;
+        if (player.y > desiredMaxY) {
+          const dy = desiredMaxY - player.y;
+          applyCameraShift(dy);
+        }
+      }
+
       if (angelModeRef.current === 'thorn') {
         const speed = Math.hypot(player.velocityX, player.velocityY);
         if (speed > 0.5) {
