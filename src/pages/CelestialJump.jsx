@@ -497,6 +497,7 @@ const ASCII_TRIGGER_CHANCE = 0.1;
 const NAME_STORAGE_KEY = 'celestialJump_playerName';
 
 export default function CelestialJump() {
+  const boardRef = useRef(null);
   const canvasRef = useRef(null);
   const snowCanvasRef = useRef(null);
   const [score, setScore] = useState(0);
@@ -1051,9 +1052,15 @@ export default function CelestialJump() {
     const dpr = Math.min(window.devicePixelRatio || 1, 1.8);
 
     const resizeCanvas = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
+      const wrapper = boardRef.current;
+      if (!wrapper) return;
+      const width = wrapper.clientWidth;
+      const height = Math.max(320, Math.round(width / BOARD_ASPECT));
+
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       if (snowCanvas && snowCtx) {
@@ -1063,7 +1070,9 @@ export default function CelestialJump() {
       }
     };
 
-    resizeCanvas();
+    requestAnimationFrame(resizeCanvas);
+    const resizeObserver = new ResizeObserver(() => resizeCanvas());
+    if (boardRef.current) resizeObserver.observe(boardRef.current);
     window.addEventListener('resize', resizeCanvas);
 
   const GRAVITY = 0.2;
@@ -1071,6 +1080,7 @@ export default function CelestialJump() {
   const PLAYER_SIZE = 30;
   const PLATFORM_WIDTH = 80;
   const PLATFORM_HEIGHT = 12;
+  const BOARD_ASPECT = 9 / 16; // width / height ratio for playfield
   const DEBUG = false; // 开发阶段快速测试终局
   const FINAL_SCORE = 50000;
   const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
@@ -2340,6 +2350,7 @@ export default function CelestialJump() {
       window.removeEventListener('click', handleGlobalInteraction);
       window.removeEventListener('touchstart', handleGlobalInteraction);
       window.removeEventListener('resize', resizeCanvas);
+      resizeObserver.disconnect();
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
       canvas.removeEventListener('touchend', handleTouchEnd);
@@ -2492,11 +2503,14 @@ export default function CelestialJump() {
         </div>
 
         {/* 游戏画布 */}
-        <div className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4">
+        <div
+          ref={boardRef}
+          className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4"
+          style={{ aspectRatio: '9 / 16' }}
+        >
           <canvas
             ref={canvasRef}
             className="w-full block"
-            style={{ height: 'clamp(520px, 68vh, 680px)' }}
           />
 
           {gameOver && (
