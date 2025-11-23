@@ -94,7 +94,12 @@ const ASCII_BACKGROUNDS = [
   ]
 ];
 
-const ASCII_PARALLAX = 0.25;
+const ASCII_PARALLAX = 0.18;
+const MAX_PARTICLES = 40;
+const MAX_FRONT_SNOW = 20;
+const ANGEL_TEST_SEQUENCE = ['thorn', 'blood', 'snow'];
+const LONG_FLUFFY_HITBOX_WIDTH = 80;
+const LONG_FLUFFY_HITBOX_HEIGHT = 60;
 
 export default function CelestialJump() {
   const canvasRef = useRef(null);
@@ -104,6 +109,14 @@ export default function CelestialJump() {
   const [gameOver, setGameOver] = useState(false);
   const [shakeActive, setShakeActive] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(true);
+  const angelModeRef = useRef('none');
+  const angelTestIndexRef = useRef(0);
+  const particlesRef = useRef(
+    Array.from({ length: MAX_PARTICLES }, () => ({ active: false }))
+  );
+  const frontSnowRef = useRef(
+    Array.from({ length: MAX_FRONT_SNOW }, () => ({ active: false }))
+  );
 
   const gameStateRef = useRef(null);
   const isGameOverRef = useRef(false);
@@ -245,10 +258,14 @@ export default function CelestialJump() {
     const startBgmIfNeeded = () => {
       const audio = bgmRef.current;
       if (!audio || bgmStartedRef.current) {
-        if (audio) audio.volume = musicEnabledRef.current ? BGM_VOLUME : 0;
+        if (audio) {
+          audio.muted = !musicEnabledRef.current;
+          audio.volume = musicEnabledRef.current ? BGM_VOLUME : 0;
+        }
         return;
       }
 
+      audio.muted = !musicEnabledRef.current;
       audio.volume = musicEnabledRef.current ? BGM_VOLUME : 0;
       const playPromise = audio.play();
       if (playPromise && playPromise.then) {
@@ -270,6 +287,7 @@ export default function CelestialJump() {
     const ensureBgmPlaying = () => {
       const audio = bgmRef.current;
       if (!audio) return;
+      audio.muted = !musicEnabledRef.current;
       audio.volume = musicEnabledRef.current ? BGM_VOLUME : 0;
       if (!bgmStartedRef.current || audio.paused) {
         const p = audio.play();
@@ -351,6 +369,155 @@ export default function CelestialJump() {
       }, 160);
     };
 
+    // ========= 轻量粒子系统 =========
+    const spawnParticle = (data) => {
+      const pool = particlesRef.current;
+      const slot = pool.find((p) => !p.active);
+      if (!slot) return;
+      Object.assign(slot, data, { active: true, life: 0 });
+    };
+
+    const emitLandingParticles = (mode, x, y) => {
+      if (mode === 'thorn') {
+        const count = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) {
+          spawnParticle({
+            x,
+            y,
+            vx: (Math.random() * 160 - 80),
+            vy: -(60 + Math.random() * 80),
+            gravity: 320,
+            maxLife: 0.6,
+            size: 2 + Math.random() * 2,
+            color: 'rgba(255,255,255,0.9)',
+            kind: 'thorn'
+          });
+        }
+        // 短暂十字
+        spawnParticle({
+          x,
+          y,
+          vx: 0,
+          vy: 0,
+          gravity: 0,
+          maxLife: 0.08,
+          size: 6,
+          color: 'rgba(255,255,255,0.9)',
+          kind: 'cross'
+        });
+      } else if (mode === 'snow') {
+        const count = 4 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) {
+          spawnParticle({
+            x,
+            y,
+            vx: (Math.random() * 40 - 20),
+            vy: -(40 + Math.random() * 30),
+            gravity: 120,
+            maxLife: 0.7,
+            size: 2 + Math.random() * 1.5,
+            color: 'rgba(255,255,255,0.85)',
+            kind: 'snow'
+          });
+        }
+      } else if (mode === 'blood') {
+        const count = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) {
+          spawnParticle({
+            x: x + (Math.random() * 10 - 5),
+            y,
+            vx: (Math.random() * 30 - 15),
+            vy: (40 + Math.random() * 40),
+            gravity: 260,
+            maxLife: 0.45,
+            size: 8 + Math.random() * 4,
+            color: 'rgba(140,20,30,0.8)',
+            kind: 'blood'
+          });
+        }
+      }
+    };
+
+    const ensureFrontSnow = (width, height) => {
+      const pool = frontSnowRef.current;
+      for (let i = 0; i < pool.length; i++) {
+        const p = pool[i];
+        if (!p.active) {
+          p.active = true;
+          p.x = Math.random() * width;
+          p.y = Math.random() * -height;
+          p.speed = 12 + Math.random() * 12;
+          p.size = 1 + Math.random() * 2;
+          p.opacity = 0.35 + Math.random() * 0.3;
+        }
+      }
+    };
+
+    const updateFrontSnow = (dt, width, height) => {
+      const pool = frontSnowRef.current;
+      for (const p of pool) {
+        if (!p.active) continue;
+        p.y += p.speed * dt;
+        if (p.y > height + 6) {
+          p.y = -6;
+          p.x = Math.random() * width;
+        }
+      }
+    };
+
+    const updateParticles = (dt) => {
+      const pool = particlesRef.current;
+      for (const p of pool) {
+        if (!p.active) continue;
+        p.life += dt;
+        if (p.life >= p.maxLife) {
+          p.active = false;
+          continue;
+        }
+        p.vy = (p.vy || 0) + (p.gravity || 0) * dt;
+        p.x += (p.vx || 0) * dt;
+        p.y += (p.vy || 0) * dt;
+      }
+    };
+
+    const drawParticles = (ctx, dpr) => {
+      const pool = particlesRef.current;
+      for (const p of pool) {
+        if (!p.active) continue;
+        const alpha = 1 - p.life / p.maxLife;
+        if (alpha <= 0) continue;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        if (p.kind === 'thorn') {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size * 1.8, p.size);
+        } else if (p.kind === 'snow') {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x, p.y, p.size, p.size);
+        } else if (p.kind === 'blood') {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x, p.y, 1, p.size);
+        } else if (p.kind === 'cross') {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x - p.size, p.y - 0.5, p.size * 2, 1);
+          ctx.fillRect(p.x - 0.5, p.y - p.size, 1, p.size * 2);
+        }
+        ctx.restore();
+      }
+    };
+
+    const cycleAngelTestMode = () => {
+      if (!ANGEL_TEST_SEQUENCE.length) return;
+      angelModeRef.current = ANGEL_TEST_SEQUENCE[angelTestIndexRef.current % ANGEL_TEST_SEQUENCE.length];
+      angelTestIndexRef.current =
+        (angelTestIndexRef.current + 1) % ANGEL_TEST_SEQUENCE.length;
+    };
+
+    const handleLanding = (x, y) => {
+      emitLandingParticles(angelModeRef.current, x, y);
+      cycleAngelTestMode();
+    };
+
     // ========= Canvas / 游戏逻辑 =========
     const ctx = canvas.getContext('2d');
     const dpr = Math.min(window.devicePixelRatio || 1, 1.8);
@@ -423,16 +590,18 @@ export default function CelestialJump() {
     const snowflakes = [];
     const monsters = [];
     const chineseChars = ['天', '使', '棘', '雪', '血', '死', '亡'];
-const fluffyChars = ['´ཀ`', '𓉸ྀི', 'ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
-const longFluffyChars = ['ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
-const monsterShakes = new Map();
-const LONG_FLUFFY_HITBOX_WIDTH = 80;
-const LONG_FLUFFY_HITBOX_HEIGHT = 60;
+    const fluffyChars = ['´ཀ`', '𓉸ྀི', 'ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
+    const longFluffyChars = ['ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
+    const monsterShakes = new Map();
 
     const initPlatforms = () => {
       platforms.length = 0;
       icePlatforms.clear();
       const height = canvas.height / dpr;
+      angelModeRef.current = ANGEL_TEST_SEQUENCE[0] || 'none';
+      angelTestIndexRef.current = ANGEL_TEST_SEQUENCE.length > 1 ? 1 : 0;
+      particlesRef.current.forEach((p) => (p.active = false));
+      frontSnowRef.current.forEach((p) => (p.active = false));
 
       // 初始平台
       platforms.push({
@@ -774,6 +943,7 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
     const updateGame = (time) => {
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
+      const dt = FIXED_TIMESTEP / 1000;
 
       if (deathAnimationRef.current.active) {
         const anim = deathAnimationRef.current;
@@ -831,6 +1001,7 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
             player.velocityY > 0
           ) {
             player.velocityY = JUMP_FORCE;
+            handleLanding(player.x + player.width / 2, platform.y);
 
             if (icePlatforms.has(platform)) {
               icePlatforms.delete(platform);
@@ -1045,6 +1216,7 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
             playStompSound();
             monster.hit = true;
             monsterShakes.set(monster, { startTime: time, duration: 200 });
+            handleLanding(player.x + player.width / 2, monster.y);
 
             setTimeout(() => {
               const idx = monsters.indexOf(monster);
@@ -1065,6 +1237,15 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
       if (player.y > height + 50) {
         finalizeGameOver();
       }
+
+      if (angelModeRef.current === 'snow') {
+        ensureFrontSnow(width, height);
+        updateFrontSnow(dt, width, height);
+      } else {
+        frontSnowRef.current.forEach((p) => (p.active = false));
+      }
+
+      updateParticles(dt);
 
       // ASCII 背景触发：达到阈值时若无背景则直接生成
       const asciiThreshold = 1000;
@@ -1156,6 +1337,18 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
         snowCtx.globalAlpha = 1;
       }
 
+      // 前景雪（天使雪形态）
+      if (angelModeRef.current === 'snow') {
+        ctx.save();
+        frontSnowRef.current.forEach((p) => {
+          if (!p.active) return;
+          ctx.globalAlpha = p.opacity ?? 0.4;
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.fillRect(p.x, p.y, p.size || 1.5, p.size || 1.5);
+        });
+        ctx.restore();
+      }
+
       // ASCII 背景：居中，随 cameraY 被动滚动
       if (asciiBgRef.current) {
         const { bitmap, width: bw, height: bh, worldY } = asciiBgRef.current;
@@ -1210,6 +1403,9 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
         player.width / 2,
         player.rotation
       );
+
+      // 粒子绘制
+      drawParticles(ctx, dpr);
     };
 
     const gameLoop = (time) => {
@@ -1260,25 +1456,30 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
         if (bgmRef.current) {
           bgmRef.current.pause();
           bgmRef.current.currentTime = 0;
-          bgmRef.current.volume = BGM_VOLUME;
-        }
-        bgmStartedRef.current = false;
-        musicEnabledRef.current = true;
-        setMusicEnabled(true);
-        ensureBgmPlaying();
+        bgmRef.current.volume = BGM_VOLUME;
+        bgmRef.current.muted = false;
+      }
+      bgmStartedRef.current = false;
+      musicEnabledRef.current = true;
+      setMusicEnabled(true);
+      ensureBgmPlaying();
 
-        isGameOverRef.current = false;
-        setGameOver(false);
-        currentScore = 0;
-        setScore(0);
+      isGameOverRef.current = false;
+      setGameOver(false);
+      currentScore = 0;
+      setScore(0);
 
         const width = canvas.width / dpr;
         const height = canvas.height / dpr;
 
-        cameraY = 0;
+      cameraY = 0;
+      angelModeRef.current = ANGEL_TEST_SEQUENCE[0] || 'none';
+      angelTestIndexRef.current = ANGEL_TEST_SEQUENCE.length > 1 ? 1 : 0;
+      particlesRef.current.forEach((p) => (p.active = false));
+      frontSnowRef.current.forEach((p) => (p.active = false));
 
-        player.x = width / 2 - PLAYER_SIZE / 2;
-        player.y = height * 0.7;
+      player.x = width / 2 - PLAYER_SIZE / 2;
+      player.y = height * 0.7;
         player.velocityY = 0;
       player.velocityX = 0;
       player.rotation = 0;
@@ -1377,6 +1578,7 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
               musicEnabledRef.current = next;
               setMusicEnabled(next);
               if (bgmRef.current) {
+                bgmRef.current.muted = !next;
                 bgmRef.current.volume = next ? BGM_VOLUME : 0;
               }
               ensureBgmPlaying();
@@ -1403,6 +1605,7 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
               musicEnabledRef.current = next;
               setMusicEnabled(next);
               if (bgmRef.current) {
+                bgmRef.current.muted = !next;
                 bgmRef.current.volume = next ? BGM_VOLUME : 0;
               }
               ensureBgmPlaying();
