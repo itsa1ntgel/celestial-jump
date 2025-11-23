@@ -497,7 +497,6 @@ const ASCII_TRIGGER_CHANCE = 0.1;
 const NAME_STORAGE_KEY = 'celestialJump_playerName';
 
 export default function CelestialJump() {
-  const boardRef = useRef(null);
   const canvasRef = useRef(null);
   const snowCanvasRef = useRef(null);
   const [score, setScore] = useState(0);
@@ -624,33 +623,6 @@ export default function CelestialJump() {
     if (!canvas) return;
     const snowCanvas = snowCanvasRef.current;
     const snowCtx = snowCanvas?.getContext('2d');
-    const GRAVITY = 0.2;
-    const JUMP_FORCE = -10.5;
-    const PLAYER_SIZE = 30;
-    const PLATFORM_WIDTH = 80;
-    const PLATFORM_HEIGHT = 12;
-    const BOARD_ASPECT = 9 / 16; // width / height ratio for playfield
-    const MIN_BOARD_HEIGHT = 520;
-    const MAX_BOARD_HEIGHT = 600;
-    const DEBUG = true; // 开发阶段快速测试终局
-    const FINAL_SCORE = 50000;
-    const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
-    const FINAL_TEST_SCORE = 48000;
-    const MIN_HORIZONTAL_GAP = 12;
-    const MIN_VERTICAL_GAP = 35;
-    const SPAWN_BUFFER_Y = -200;
-    const END_QUOTES = [
-      'keep it up gang',
-      'love u ♡',
-      'thank u for ur time gng',
-      'u made it here so u can make it out there too',
-      '别放弃',
-      '我不知道你，但你一定可以',
-      '爱',
-      '要爱，不要恨',
-      '感谢你 ♡',
-      '你已经很努力了，朋友'
-    ];
 
     // ========= 工具函数：音效池 =========
     const createAudioPool = (path, volume = 1, poolSize = 3) => {
@@ -1079,24 +1051,9 @@ export default function CelestialJump() {
     const dpr = Math.min(window.devicePixelRatio || 1, 1.8);
 
     const resizeCanvas = () => {
-      const wrapper = boardRef.current;
-      if (!wrapper) return;
-      const width = wrapper.clientWidth;
-      const rawHeight = Math.round(width / BOARD_ASPECT);
-      const rectHeight = wrapper.getBoundingClientRect().height || 0;
-      const maxAllowedHeight = Math.min(
-        MAX_BOARD_HEIGHT,
-        (window.innerHeight || MAX_BOARD_HEIGHT) - 180
-      );
-      const clampedMax = Math.max(MIN_BOARD_HEIGHT, maxAllowedHeight);
-      const heightGuess = rectHeight || rawHeight;
-      const height = Math.max(MIN_BOARD_HEIGHT, Math.min(heightGuess, clampedMax));
-
-      wrapper.style.height = `${height}px`;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       if (snowCanvas && snowCtx) {
@@ -1107,9 +1064,32 @@ export default function CelestialJump() {
     };
 
     resizeCanvas();
-    resizeCanvas();
-    requestAnimationFrame(resizeCanvas);
     window.addEventListener('resize', resizeCanvas);
+
+  const GRAVITY = 0.2;
+  const JUMP_FORCE = -10.5;
+  const PLAYER_SIZE = 30;
+  const PLATFORM_WIDTH = 80;
+  const PLATFORM_HEIGHT = 12;
+  const DEBUG = false; // 开发阶段快速测试终局
+  const FINAL_SCORE = 50000;
+  const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
+  const FINAL_TEST_SCORE = 46000;
+  const MIN_HORIZONTAL_GAP = 12;
+  const MIN_VERTICAL_GAP = 35;
+  const SPAWN_BUFFER_Y = -200;
+  const END_QUOTES = [
+    'keep it up gang',
+    'love u ♡',
+    'thank u for ur time gng',
+    'u made it here so u can make it out there too',
+    '别放弃',
+    '我不知道你，但你一定可以',
+    '爱',
+    '要爱，不要恨',
+    '感谢你 ♡',
+    '你已经很努力了，朋友'
+  ];
 
     const player = {
       x: canvas.width / (2 * dpr) - PLAYER_SIZE / 2,
@@ -1771,16 +1751,6 @@ export default function CelestialJump() {
             handleLanding(player.x + player.width / 2, platform.y);
             if (platform.isFinal && !finalModeEnabled) {
               enterFinalMode(platform);
-            }
-            if (!finalCameraStarted) {
-              const bottomClamp = height * 0.9;
-              if (platform.y <= bottomClamp) {
-                const desiredMaxY = height * 0.72;
-                if (player.y > desiredMaxY) {
-                  const dy = desiredMaxY - player.y;
-                  applyCameraShift(dy);
-                }
-              }
             }
             if (angelModeRef.current === 'thorn') {
               const speed = Math.hypot(player.velocityX, player.velocityY);
@@ -2522,19 +2492,11 @@ export default function CelestialJump() {
         </div>
 
         {/* 游戏画布 */}
-        <div
-          ref={boardRef}
-          className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4"
-          style={{
-            maxWidth: '420px',
-            width: '100%',
-            marginLeft: 'auto',
-            marginRight: 'auto'
-          }}
-        >
+        <div className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4">
           <canvas
             ref={canvasRef}
             className="w-full block"
+            style={{ height: 'clamp(520px, 68vh, 680px)' }}
           />
 
           {gameOver && (
