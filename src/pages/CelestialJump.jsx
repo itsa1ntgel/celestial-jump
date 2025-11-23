@@ -94,7 +94,7 @@ const ASCII_BACKGROUNDS = [
   ]
 ];
 
-const ASCII_PARALLAX = 0.35;
+const ASCII_PARALLAX = 0.25;
 
 export default function CelestialJump() {
   const canvasRef = useRef(null);
@@ -323,6 +323,7 @@ export default function CelestialJump() {
     };
 
     const playStompSound = () => {
+      if (!musicEnabledRef.current) return;
       warmStompSounds();
       const pools = stompPoolRef.current;
       if (!pools || pools.length === 0) return;
@@ -1385,7 +1386,7 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
             aria-label="Toggle music"
           >
             <span
-              className={`text-[2.3rem] md:text-[2.6rem] leading-none inline-block ${musicEnabled ? 'text-slate-800' : 'text-slate-400'}`}
+              className={`text-[2.3rem] md:text-[2.6rem] leading-none inline-block ${musicEnabled ? 'text-slate-800' : 'text-slate-300'}`}
             >
               𝄞
             </span>
@@ -1411,7 +1412,7 @@ const LONG_FLUFFY_HITBOX_HEIGHT = 60;
             aria-label="Toggle music"
           >
             <span
-              className={`text-[2.3rem] md:text-[2.6rem] leading-none inline-block ${musicEnabled ? 'text-slate-800' : 'text-slate-400'}`}
+              className={`text-[2.3rem] md:text-[2.6rem] leading-none inline-block ${musicEnabled ? 'text-slate-800' : 'text-slate-300'}`}
             >
               𝄞
             </span>
