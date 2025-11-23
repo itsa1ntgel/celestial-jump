@@ -1077,12 +1077,8 @@ export default function CelestialJump() {
     };
 
     resizeCanvas();
+    resizeCanvas();
     requestAnimationFrame(resizeCanvas);
-    const resizeObserver =
-      typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(() => resizeCanvas())
-        : null;
-    if (resizeObserver && boardRef.current) resizeObserver.observe(boardRef.current);
     window.addEventListener('resize', resizeCanvas);
 
   const GRAVITY = 0.2;
@@ -2362,7 +2358,6 @@ export default function CelestialJump() {
       window.removeEventListener('click', handleGlobalInteraction);
       window.removeEventListener('touchstart', handleGlobalInteraction);
       window.removeEventListener('resize', resizeCanvas);
-      resizeObserver?.disconnect();
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
       canvas.removeEventListener('touchend', handleTouchEnd);
