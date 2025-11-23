@@ -511,6 +511,7 @@ export default function CelestialJump() {
   const [overlayClosing, setOverlayClosing] = useState(false);
   const angelModeRef = useRef('none');
   const angelComboRef = useRef('');
+  const highScoreRef = useRef(0);
   const particlesRef = useRef(
     Array.from({ length: MAX_PARTICLES }, () => ({ active: false }))
   );
@@ -604,14 +605,18 @@ export default function CelestialJump() {
     const savedName = localStorage.getItem(NAME_STORAGE_KEY);
     if (savedName && savedName.trim()) {
       setPlayerName(savedName.trim());
-      playerNameRef.current = savedName.trim();
-      showNameOverlayRef.current = false;
-      setShowNameOverlay(false);
-    } else {
-      setShowNameOverlay(true);
-      showNameOverlayRef.current = true;
-    }
-  }, []);
+    playerNameRef.current = savedName.trim();
+    showNameOverlayRef.current = false;
+    setShowNameOverlay(false);
+  } else {
+    setShowNameOverlay(true);
+    showNameOverlayRef.current = true;
+  }
+}, []);
+
+  useEffect(() => {
+    highScoreRef.current = highScore;
+  }, [highScore]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1641,7 +1646,7 @@ export default function CelestialJump() {
       deathAnimationRef.current.pendingGameOver = false;
       setGameOver(true);
       fadeOutBgm(500);
-      if (currentScore > highScore) {
+      if (currentScore > highScoreRef.current) {
         setHighScore(Math.floor(currentScore));
       }
       if (animationId) {
@@ -2357,7 +2362,7 @@ export default function CelestialJump() {
 
       startBgmIfNeededRef.current = () => {};
     };
-  }, [highScore]);
+  }, []);
 
   useEffect(() => {
     showNameOverlayRef.current = showNameOverlay;
