@@ -241,15 +241,15 @@ export default function CelestialJump() {
     ];
     stompPoolRef.current = stompSounds.map((path) => createAudioPool(path, 0.55, 3));
 
-    // 用户第一次按键 / 触摸时启动 BGM
+    // 保持 BGM 播放：即便静音也保持播放进度
     const startBgmIfNeeded = () => {
-      if (!musicEnabledRef.current) return;
       const audio = bgmRef.current;
-      if (!audio || bgmStartedRef.current) return;
+      if (!audio || bgmStartedRef.current) {
+        if (audio) audio.volume = musicEnabledRef.current ? BGM_VOLUME : 0;
+        return;
+      }
 
-      audio.currentTime = 0;
-      audio.volume = BGM_VOLUME;
-
+      audio.volume = musicEnabledRef.current ? BGM_VOLUME : 0;
       const playPromise = audio.play();
       if (playPromise && playPromise.then) {
         playPromise
@@ -267,14 +267,11 @@ export default function CelestialJump() {
 
     startBgmIfNeededRef.current = startBgmIfNeeded;
 
-    const playBgmFromStart = () => {
-      if (!musicEnabledRef.current) return;
+    const ensureBgmPlaying = () => {
       const audio = bgmRef.current;
       if (!audio) return;
-      try {
-        audio.pause();
-        audio.currentTime = 0;
-        audio.volume = BGM_VOLUME;
+      audio.volume = musicEnabledRef.current ? BGM_VOLUME : 0;
+      if (!bgmStartedRef.current || audio.paused) {
         const p = audio.play();
         if (p && p.then) {
           p.then(() => {
@@ -285,8 +282,6 @@ export default function CelestialJump() {
         } else {
           bgmStartedRef.current = true;
         }
-      } catch (e) {
-        bgmStartedRef.current = false;
       }
     };
 
@@ -1257,7 +1252,7 @@ export default function CelestialJump() {
         bgmStartedRef.current = false;
         musicEnabledRef.current = true;
         setMusicEnabled(true);
-        playBgmFromStart();
+        ensureBgmPlaying();
 
         isGameOverRef.current = false;
         setGameOver(false);
@@ -1368,15 +1363,10 @@ export default function CelestialJump() {
               const next = !musicEnabledRef.current;
               musicEnabledRef.current = next;
               setMusicEnabled(next);
-              if (!next) {
-                if (bgmRef.current) {
-                  bgmRef.current.pause();
-                  bgmRef.current.currentTime = 0;
-                  bgmStartedRef.current = false;
-                }
-              } else {
-                playBgmFromStart();
+              if (bgmRef.current) {
+                bgmRef.current.volume = next ? BGM_VOLUME : 0;
               }
+              ensureBgmPlaying();
             }}
             className="transition-transform duration-200 focus:outline-none"
             style={{ transform: 'rotate(-12deg)' }}
@@ -1399,15 +1389,10 @@ export default function CelestialJump() {
               const next = !musicEnabledRef.current;
               musicEnabledRef.current = next;
               setMusicEnabled(next);
-              if (!next) {
-                if (bgmRef.current) {
-                  bgmRef.current.pause();
-                  bgmRef.current.currentTime = 0;
-                  bgmStartedRef.current = false;
-                }
-              } else {
-                playBgmFromStart();
+              if (bgmRef.current) {
+                bgmRef.current.volume = next ? BGM_VOLUME : 0;
               }
+              ensureBgmPlaying();
             }}
             className="transition-transform duration-200 focus:outline-none"
             style={{ transform: 'rotate(12deg)' }}
