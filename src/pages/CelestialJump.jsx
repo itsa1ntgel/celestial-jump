@@ -720,20 +720,6 @@ export default function CelestialJump() {
       }
     };
 
-    startBgmIfNeededRef.current = startBgmIfNeeded;
-    ensureBgmPlayingRef.current = ensureBgmPlaying;
-
-    useEffect(() => {
-      showNameOverlayRef.current = showNameOverlay;
-      if (showNameOverlay) {
-        if (bgmRef.current) {
-          bgmRef.current.pause();
-        }
-      } else {
-        attemptResumeBgm();
-      }
-    }, [showNameOverlay]);
-
     const ensureBgmPlaying = () => {
       const audio = bgmRef.current;
       if (!audio) return;
@@ -752,6 +738,9 @@ export default function CelestialJump() {
         }
       }
     };
+
+    startBgmIfNeededRef.current = startBgmIfNeeded;
+    ensureBgmPlayingRef.current = ensureBgmPlaying;
 
     // game over 时 0.5s 渐隐 BGM
     const fadeOutBgm = (durationMs = 500) => {
