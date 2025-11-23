@@ -1092,6 +1092,7 @@ export default function CelestialJump() {
       const heightGuess = rectHeight || rawHeight;
       const height = Math.max(MIN_BOARD_HEIGHT, Math.min(heightGuess, clampedMax));
 
+      wrapper.style.height = `${height}px`;
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
       canvas.width = width * dpr;
@@ -2515,9 +2516,6 @@ export default function CelestialJump() {
           ref={boardRef}
           className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4"
           style={{
-            aspectRatio: '9 / 16',
-            maxHeight: '600px',
-            minHeight: '520px',
             maxWidth: '420px',
             width: '100%',
             marginLeft: 'auto',
