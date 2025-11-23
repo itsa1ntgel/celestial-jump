@@ -632,10 +632,10 @@ export default function CelestialJump() {
     const BOARD_ASPECT = 9 / 16; // width / height ratio for playfield
     const MIN_BOARD_HEIGHT = 520;
     const MAX_BOARD_HEIGHT = 600;
-    const DEBUG = false; // 开发阶段快速测试终局
+    const DEBUG = true; // 开发阶段快速测试终局
     const FINAL_SCORE = 50000;
     const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
-    const FINAL_TEST_SCORE = 46000;
+    const FINAL_TEST_SCORE = 48000;
     const MIN_HORIZONTAL_GAP = 12;
     const MIN_VERTICAL_GAP = 35;
     const SPAWN_BUFFER_Y = -200;
@@ -1740,15 +1740,6 @@ export default function CelestialJump() {
       player.y += player.velocityY;
       player.rotation += player.rotationSpeed;
 
-      // 保持视野中部的舒适构图，避免玩家停在底边附近
-      if (!finalCameraStarted) {
-        const desiredMaxY = height * 0.72;
-        if (player.y > desiredMaxY) {
-          const dy = desiredMaxY - player.y;
-          applyCameraShift(dy);
-        }
-      }
-
       if (angelModeRef.current === 'thorn') {
         const speed = Math.hypot(player.velocityX, player.velocityY);
         if (speed > 0.5) {
@@ -1780,6 +1771,13 @@ export default function CelestialJump() {
             handleLanding(player.x + player.width / 2, platform.y);
             if (platform.isFinal && !finalModeEnabled) {
               enterFinalMode(platform);
+            }
+            if (!finalCameraStarted) {
+              const desiredMaxY = height * 0.72;
+              if (player.y > desiredMaxY) {
+                const dy = desiredMaxY - player.y;
+                applyCameraShift(dy);
+              }
             }
             if (angelModeRef.current === 'thorn') {
               const speed = Math.hypot(player.velocityX, player.velocityY);
