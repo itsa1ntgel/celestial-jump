@@ -533,7 +533,8 @@ export default function CelestialJump() {
   }, [playerName]);
 
   const handleNameSubmit = () => {
-    const name = nameInput.trim();
+    const raw = nameInput;
+    const name = raw.trim();
     if (name.length < 1) {
       setNameError('name too short');
       return;
@@ -2068,7 +2069,8 @@ export default function CelestialJump() {
       }
 
       drawStar(cx, cy, starSize, player.rotation);
-      if (playerName) {
+      const nameLabel = playerNameRef.current;
+      if (nameLabel) {
         ctx.save();
         ctx.font = '12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
@@ -2076,12 +2078,12 @@ export default function CelestialJump() {
         const labelY = player.y - 10;
         ctx.lineWidth = 3;
         ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-        ctx.strokeText(playerName, cx, labelY);
+        ctx.strokeText(nameLabel, cx, labelY);
         ctx.lineWidth = 1.4;
         ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-        ctx.strokeText(playerName, cx, labelY);
+        ctx.strokeText(nameLabel, cx, labelY);
         ctx.fillStyle = 'rgba(0,0,0,0.92)';
-        ctx.fillText(playerName, cx, labelY);
+        ctx.fillText(nameLabel, cx, labelY);
         ctx.restore();
       }
 
@@ -2421,7 +2423,10 @@ export default function CelestialJump() {
               <input
                 autoFocus
                 value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
+                onChange={(e) => {
+                  setNameInput(e.target.value);
+                  setNameError('');
+                }}
                 onKeyDown={handleNameKeyDown}
                 className="w-full px-4 py-3 rounded-[14px] bg-white/15 border border-white/40 text-white outline-none placeholder-transparent"
               />
