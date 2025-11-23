@@ -868,35 +868,32 @@ export default function CelestialJump() {
       if (snowCtx && snowCanvas) {
         snowCtx.clearRect(0, 0, snowWidth, snowHeight);
 
-        if (currentScore >= 10000) {
-          if (Math.random() < 0.03) {
-            snowflakes.push({
-              x: Math.random() * snowWidth,
-              y: -20 - Math.random() * 30,
-              speed: 0.5 + Math.random() * 1,
-              size: 2 + Math.random() * 2,
-              opacity: 0.3 + Math.random() * 0.4
-            });
-          }
-
-          snowCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-          for (let i = snowflakes.length - 1; i >= 0; i--) {
-            const flake = snowflakes[i];
-            flake.y += flake.speed;
-
-            snowCtx.globalAlpha = flake.opacity;
-            snowCtx.beginPath();
-            snowCtx.arc(flake.x, flake.y, flake.size, 0, Math.PI * 2);
-            snowCtx.fill();
-
-            if (flake.y > snowHeight + 10) {
-              snowflakes.splice(i, 1);
-            }
-          }
-          snowCtx.globalAlpha = 1;
-        } else if (snowflakes.length) {
-          snowflakes.length = 0;
+        const baseSnowChance = currentScore >= 10000 ? 0.035 : 0.02;
+        if (Math.random() < baseSnowChance) {
+          snowflakes.push({
+            x: Math.random() * snowWidth,
+            y: -snowHeight * 0.02 - Math.random() * 40,
+            speed: 0.5 + Math.random() * 1.2,
+            size: 2 + Math.random() * 2.4,
+            opacity: 0.3 + Math.random() * 0.45
+          });
         }
+
+        snowCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        for (let i = snowflakes.length - 1; i >= 0; i--) {
+          const flake = snowflakes[i];
+          flake.y += flake.speed;
+
+          snowCtx.globalAlpha = flake.opacity;
+          snowCtx.beginPath();
+          snowCtx.arc(flake.x, flake.y, flake.size, 0, Math.PI * 2);
+          snowCtx.fill();
+
+          if (flake.y > snowHeight + 10) {
+            snowflakes.splice(i, 1);
+          }
+        }
+        snowCtx.globalAlpha = 1;
       }
 
       platforms.forEach((platform) => {
@@ -1053,10 +1050,13 @@ export default function CelestialJump() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-[#f7f9fc] via-[#f1f4fb] to-[#e6ebf5] flex flex-col items-center justify-start pt-4 pb-6 overflow-hidden select-none relative">
+    <div
+      className="min-h-screen w-full bg-gradient-to-b from-[#f7f9fc] via-[#f1f4fb] to-[#e6ebf5] flex flex-col items-center justify-start pt-4 pb-12 overflow-hidden select-none relative"
+      style={{ paddingBottom: 'max(44px, calc(env(safe-area-inset-bottom) + 36px))' }}
+    >
       <canvas
         ref={snowCanvasRef}
-        className="pointer-events-none fixed inset-0 w-full h-full z-30"
+        className="pointer-events-none fixed inset-0 w-full h-full z-40"
         aria-hidden
       />
 
@@ -1089,7 +1089,7 @@ export default function CelestialJump() {
         </div>
 
         {/* 游戏画布 */}
-        <div className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl">
+        <div className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4">
           <canvas ref={canvasRef} className="w-full h-[620px] md:h-[660px] block" />
 
           {gameOver && (
