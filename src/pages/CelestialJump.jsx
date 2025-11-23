@@ -528,6 +528,10 @@ export default function CelestialJump() {
     ensureBgmPlayingRef.current?.();
   };
 
+  useEffect(() => {
+    playerNameRef.current = playerName;
+  }, [playerName]);
+
   const handleNameSubmit = () => {
     const name = nameInput.trim();
     if (name.length < 1) {
