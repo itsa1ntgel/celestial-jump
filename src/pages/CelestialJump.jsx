@@ -1793,7 +1793,7 @@ export default function CelestialJump() {
       }
 
       for (let i = platforms.length - 1; i >= 0; i--) {
-        if (platforms[i].y > height + 50) {
+        if (platforms[i].y > height) {
           const removed = platforms.splice(i, 1)[0];
           icePlatforms.delete(removed);
         }
@@ -1868,7 +1868,7 @@ export default function CelestialJump() {
         }
       }
 
-      if (player.y > height + 50) {
+      if (player.y > height) {
         finalizeGameOver();
       }
 
