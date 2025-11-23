@@ -1122,7 +1122,7 @@ export default function CelestialJump() {
       // ASCII 背景：居中，随 cameraY 被动滚动
       if (asciiBgRef.current) {
         const { bitmap, width: bw, height: bh, worldY } = asciiBgRef.current;
-        const screenY = worldY - cameraY;
+        const screenY = worldY + cameraY;
         const screenX = (width - bw) / 2;
 
         if (screenY > height || screenY + bh < 0) {
@@ -1345,13 +1345,23 @@ export default function CelestialJump() {
             <p className="text-[11px] font-semibold text-slate-500 tracking-[0.24em] uppercase mb-1">
               Score
             </p>
-            <p className="text-3xl font-light text-slate-800 tabular-nums">{score}</p>
+            <p
+              className="text-3xl font-normal text-slate-800 tabular-nums"
+              style={{ fontFamily: 'Arial, sans-serif' }}
+            >
+              {score}
+            </p>
           </div>
           <div className="text-center">
             <p className="text-[11px] font-semibold text-slate-500 tracking-[0.24em] uppercase mb-1">
               Best
             </p>
-            <p className="text-3xl font-light text-slate-800 tabular-nums">{highScore}</p>
+            <p
+              className="text-3xl font-normal text-slate-800 tabular-nums"
+              style={{ fontFamily: 'Arial, sans-serif' }}
+            >
+              {highScore}
+            </p>
           </div>
         </div>
 
@@ -1368,33 +1378,39 @@ export default function CelestialJump() {
               <div className="text-center space-y-6 px-8">
                 <div className="text-2xl mb-4 text-gray-600">ִ𝄞</div>
                 <h2 className="text-3xl font-light text-gray-800 tracking-wide">
-                  {score < 500
-                    ? 'are you retarded or sum?'
-                    : score < 2000
-                      ? "you can't be real"
-                      : score < 5000
-                        ? 'not so smart'
-                        : score >= 40000
-                          ? 'lets die in a beautiful winter'
-                          : score >= 20000
-                            ? 'Well done. Now go get some rest gang'
-                            : score >= 10000
-                              ? 'Have you seen the snow?'
-                              : 'Journey Complete'}
-                </h2>
+              {score < 500
+                ? 'are you retarded or sum?'
+                : score < 2000
+                  ? "you can't be real"
+                  : score < 5000
+                    ? 'not so smart'
+                    : score >= 40000
+                      ? 'lets die in a beautiful winter'
+                      : score >= 20000
+                        ? 'Well done. Now go get some rest gang'
+                        : score >= 10000
+                          ? 'Have you seen the snow?'
+                          : 'Journey Complete'}
+            </h2>
 
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-500 tracking-wider uppercase">Final Score</p>
-                  <p className="text-5xl font-light text-gray-800 tabular-nums">{score}</p>
-                </div>
-                <Button
-                  onClick={handleRestart}
-                  className="bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black text-white px-8 py-6 rounded-full text-lg font-light tracking-wide shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  <RotateCcw className="w-5 h-5 mr-2" />
-                  NOW IM MAD
-                </Button>
-              </div>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-500 tracking-wider uppercase">Final Score</p>
+              <p
+                className="text-6xl font-normal text-gray-900 tabular-nums"
+                style={{ fontFamily: 'Arial, sans-serif' }}
+              >
+                {score}
+              </p>
+            </div>
+            <Button
+              onClick={handleRestart}
+              className="bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black text-white px-8 py-6 rounded-full text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              style={{ fontFamily: '"Arial Rounded MT Bold","Arial Rounded MT","Arial",sans-serif' }}
+            >
+              <RotateCcw className="w-5 h-5 mr-2" />
+              NOW IM MAD
+            </Button>
+          </div>
             </div>
           )}
         </div>
