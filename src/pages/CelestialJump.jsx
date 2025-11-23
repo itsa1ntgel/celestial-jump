@@ -60,26 +60,11 @@ export default function CelestialJump() {
 
       const warm = () => {
         pool.forEach((audio) => {
-          const original = audio.volume;
-          audio.volume = 0;
           try {
-            const p = audio.play();
-            if (p && p.then) {
-              p.then(() => {
-                audio.pause();
-                audio.currentTime = 0;
-                audio.volume = original;
-              }).catch(() => {
-                audio.volume = original;
-              });
-            } else {
-              audio.pause();
-              audio.currentTime = 0;
-              audio.volume = original;
-            }
-          } catch (e) {
-            audio.volume = original;
-          }
+            audio.pause();
+            audio.currentTime = 0;
+            audio.load(); // 仅预加载，不播放，避免首次卡顿/误触发
+          } catch (e) { }
         });
       };
 
@@ -1190,7 +1175,7 @@ export default function CelestialJump() {
           {gameOver && (
             <div className="absolute inset-0 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center">
               <div className="text-center space-y-6 px-8">
-                <div className="text-2xl mb-4 text-gray-600">─── ⋆⋅ ♱ ⋅⋆ ───</div>
+                <div className="text-2xl mb-4 text-gray-600">ִ𝄞</div>
                 <h2 className="text-3xl font-light text-gray-800 tracking-wide">
                   {score < 500
                     ? 'are you retarded or sum?'
