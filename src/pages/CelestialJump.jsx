@@ -2,6 +2,55 @@ import React, { useEffect, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// ASCII 背景素材（可追加更多）
+const ASCII_BACKGROUNDS = [
+  [
+    '                                                  ',
+    '                                                  ',
+    '           @                       @              ',
+    '           @                       @              ',
+    '           @                       @              ',
+    '           @                       @              ',
+    '          @@                       @@             ',
+    '          @@@                     @@@             ',
+    '          @@@                     @@@             ',
+    '       @  @@@  @               @  @@@  @          ',
+    '        :@@@@@#-                *@@@@@            ',
+    '       @@@@@@@@@               %@@@@@@@@          ',
+    '       @@@   @@@               @@@   @@@          ',
+    '        @@   @@-                @@   @@           ',
+    '        @@*  @@*                @@   @@           ',
+    '        @@#  @@*                @@   @@           ',
+    '        @@#  @@*       @        @@   @@           ',
+    '        @@#  @@*       @        @@   @@           ',
+    '        @@   @@+       @        @@   @@           ',
+    '        @@@@@@@       :@+       @@@@@@@           ',
+    '       @@@@@@@@@   @*.@@@..@   @@@@@@@@@:         ',
+    '     +@@@@@@@@@@@   @  @  @   @@@@@@@@@@@         ',
+    '      @@@@@@@@@@@+@@@@.@.@@@@+@@@@@@@@@@@         ',
+    '      @@@@@@@@@@@=  %  @  -  @@@@@@@@@@@@         ',
+    '      @@@@@@@@@@@   #  @  :  @@@@@@@@@@@@         ',
+    '    *@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@       ',
+    '     @@@@@@@@@@@@@  :.@@    @@@@@@@@@@@@@         ',
+    '     @@@ %     @@@    @@@    @@@::     %@@        ',
+    '     @@@@  @#  @@@@   @@@   @@@@@  @@  @@@        ',
+    '     @@@@@@@@@@@@@@   @@@   @@@@@@@@@@@@@@        ',
+    '   @@@@@@@@  %@@@@@   @@@   @@@@@@@  @@@@@@@      ',
+    '   @@@@@@@%  @@@@@@  *@@@@  @@@@@@#  @@@@@@@      ',
+    '  #@@@@@@@@  @@@@@@@@@@@@@@@@@@@@@@  @@@@@@@@     ',
+    '  @@@@@@@@@  @@@@@@@@@@@@@@@@@@@@@@  @@@@@@@@     ',
+    '  @@@@@@@@+  @@@@@@@@@@@@@@@@@@@@@=  @@@@@@@@     ',
+    '  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     ',
+    '  @@@@@@@@@@@@@@@@@@@@...*@@@@@@@@@@@@@@@@@@@     ',
+    ' @@@@@@@@@@@@@@@@@@@=......@@@@@@@@@@@@@@@@@@@    ',
+    ' @@@@@@@@@+..*@@@@@@#......@@@@@@@...@@@@@@@@@    ',
+    ' @@@@@@@@@....@@@@@@.......@@@@@@@...#@@@@@@@@    ',
+    ' @@@@@@@@@@@@@@@@@@@.......@@@@@@@@@*@@@@@@@@@    ',
+    ' @@@@@@@@@@@@@@@@@@@.......%@@@@@@@@@@@@@@@@@@    ',
+    '#@#################@%.-@=:.@%################@#   '
+  ]
+];
+
 export default function CelestialJump() {
   const canvasRef = useRef(null);
   const snowCanvasRef = useRef(null);
@@ -31,6 +80,9 @@ export default function CelestialJump() {
   const lastStompIndexRef = useRef(-1);
   const shakeTimeoutRef = useRef(null);
   const warmStompedRef = useRef(false);
+  const asciiBgRef = useRef(null);
+  const asciiPendingRef = useRef(false);
+  const asciiCacheRef = useRef(new Map());
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -69,6 +121,60 @@ export default function CelestialJump() {
       };
 
       return { pool, play, warm };
+    };
+
+    // ========= ASCII 预渲染 =========
+    const bakeAscii = (lines) => {
+      const cacheKey = lines.join('\n');
+      if (asciiCacheRef.current.has(cacheKey)) {
+        return asciiCacheRef.current.get(cacheKey);
+      }
+
+      const measureCanvas = document.createElement('canvas');
+      const measureCtx = measureCanvas.getContext('2d');
+      const padding = 12;
+      let fontSize = 14;
+
+      measureCtx.font = `${fontSize}px monospace`;
+      const lineWidths = lines.map((l) => measureCtx.measureText(l).width);
+      const maxLineWidth = Math.max(...lineWidths, 1);
+
+      const available = canvas.width / dpr - padding * 2;
+      if (maxLineWidth > available) {
+        const scale = available / maxLineWidth;
+        fontSize = Math.max(10, Math.floor(fontSize * scale));
+      }
+
+      measureCtx.font = `${fontSize}px monospace`;
+      const lineHeight = Math.round(fontSize * 1.25);
+      const widths = lines.map((l) => measureCtx.measureText(l).width);
+      const w = Math.min(
+        canvas.width / dpr - padding * 2,
+        Math.max(...widths, 1)
+      ) + padding * 2;
+      const h = lineHeight * lines.length + padding * 2;
+
+      const off =
+        typeof OffscreenCanvas !== 'undefined'
+          ? new OffscreenCanvas(Math.ceil(w), Math.ceil(h))
+          : (() => {
+              const c = document.createElement('canvas');
+              c.width = Math.ceil(w);
+              c.height = Math.ceil(h);
+              return c;
+            })();
+
+      const ctxOff = off.getContext('2d');
+      ctxOff.fillStyle = 'rgba(24, 38, 70, 0.28)';
+      ctxOff.font = `${fontSize}px monospace`;
+      ctxOff.textBaseline = 'top';
+      lines.forEach((line, i) => {
+        ctxOff.fillText(line, padding, padding + i * lineHeight);
+      });
+
+      const baked = { bitmap: off, width: Math.ceil(w), height: Math.ceil(h) };
+      asciiCacheRef.current.set(cacheKey, baked);
+      return baked;
     };
 
     // ========= BGM：只创建，不自动播放 =========
@@ -301,8 +407,14 @@ export default function CelestialJump() {
       monsterShakes.clear();
     };
 
+    const clearAsciiBg = () => {
+      asciiBgRef.current = null;
+      asciiPendingRef.current = false;
+    };
+
     initPlatforms();
     initMonsters();
+    clearAsciiBg();
 
     const keys = {};
     let touchStartX = 0;
@@ -874,6 +986,21 @@ export default function CelestialJump() {
       if (player.y > height + 50) {
         finalizeGameOver();
       }
+
+      // ASCII 背景触发：达到阈值时若无背景则直接生成
+      const asciiThreshold = 1000;
+      if (
+        !asciiBgRef.current &&
+        !asciiPendingRef.current &&
+        currentScore >= asciiThreshold
+      ) {
+        const pick = Math.floor(Math.random() * ASCII_BACKGROUNDS.length);
+        const lines = ASCII_BACKGROUNDS[pick];
+        const baked = bakeAscii(lines);
+        const spawnWorldY = cameraY - baked.height - 200; // 生成在视野上方
+        asciiBgRef.current = { ...baked, worldY: spawnWorldY };
+        asciiPendingRef.current = true;
+      }
     };
 
     const renderGame = (time) => {
@@ -947,6 +1074,20 @@ export default function CelestialJump() {
           }
         }
         snowCtx.globalAlpha = 1;
+      }
+
+      // ASCII 背景：居中，随 cameraY 被动滚动
+      if (asciiBgRef.current) {
+        const { bitmap, width: bw, height: bh, worldY } = asciiBgRef.current;
+        const screenY = worldY - cameraY;
+        const screenX = (width - bw) / 2;
+
+        if (screenY > height || screenY + bh < 0) {
+          asciiBgRef.current = null;
+          asciiPendingRef.current = false;
+        } else {
+          ctx.drawImage(bitmap, screenX, screenY);
+        }
       }
 
       platforms.forEach((platform) => {
