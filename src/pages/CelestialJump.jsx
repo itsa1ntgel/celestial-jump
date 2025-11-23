@@ -1061,15 +1061,26 @@ export default function CelestialJump() {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    const GRAVITY = 0.2;
-    const JUMP_FORCE = -10.5;
-    const PLAYER_SIZE = 30;
-    const PLATFORM_WIDTH = 80;
-    const PLATFORM_HEIGHT = 12;
-    const FINAL_SCORE = 50000;
-    const MIN_HORIZONTAL_GAP = 12;
-    const MIN_VERTICAL_GAP = 35;
-    const SPAWN_BUFFER_Y = -200;
+  const GRAVITY = 0.2;
+  const JUMP_FORCE = -10.5;
+  const PLAYER_SIZE = 30;
+  const PLATFORM_WIDTH = 80;
+  const PLATFORM_HEIGHT = 12;
+  const DEBUG = true; // 开发阶段快速测试终局
+  const FINAL_SCORE = 50000;
+  const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
+  const FINAL_TEST_SCORE = 46000;
+  const MIN_HORIZONTAL_GAP = 12;
+  const MIN_VERTICAL_GAP = 35;
+  const SPAWN_BUFFER_Y = -200;
+  const END_QUOTES = [
+    '我不知道你，但是相信你可以。测是吧',
+    '我不知道你怎么样，但是你要相信你自己。',
+    '你已经很努力了。',
+    '有些事情你不必这么赶。',
+    '谢谢你坚持到这里。',
+    '继续往上走，但记得要休息。'
+  ];
 
     const player = {
       x: canvas.width / (2 * dpr) - PLAYER_SIZE / 2,
@@ -1082,16 +1093,24 @@ export default function CelestialJump() {
       rotationSpeed: 0.05
     };
 
-    const platforms = [];
-    const icePlatforms = new Set();
-    let cameraY = 0;
-    let finalPlateauReached = false;
+  const platforms = [];
+  const icePlatforms = new Set();
+  let cameraY = 0;
+  let currentScore = 0;
+  let platformGenerationEnabled = true;
+  let finalModeEnabled = false;
+  let finalCameraStarted = false;
+  let finalCameraSettled = false;
+  let finalPlatform = null;
+  let targetCameraY = 0;
+  let selectedQuote = '';
+  let floatingTexts = [];
 
-    const isTooCloseToExistingPlatforms = (x, y) => {
-      for (const p of platforms) {
-        const leftA = x - MIN_HORIZONTAL_GAP;
-        const rightA = x + PLATFORM_WIDTH + MIN_HORIZONTAL_GAP;
-        const topA = y - MIN_VERTICAL_GAP;
+  const isTooCloseToExistingPlatforms = (x, y) => {
+    for (const p of platforms) {
+      const leftA = x - MIN_HORIZONTAL_GAP;
+      const rightA = x + PLATFORM_WIDTH + MIN_HORIZONTAL_GAP;
+      const topA = y - MIN_VERTICAL_GAP;
         const bottomA = y + PLATFORM_HEIGHT + MIN_VERTICAL_GAP;
 
         const leftB = p.x;
@@ -1106,16 +1125,121 @@ export default function CelestialJump() {
           topA > bottomB;
 
         if (!separated) return true;
-      }
-      return false;
-    };
+    }
+    return false;
+  };
 
-    const snowflakes = [];
-    const monsters = [];
-    const chineseChars = ['天', '使', '棘', '雪', '血', '死', '亡'];
-    const fluffyChars = ['´ཀ`', '𓉸ྀི', 'ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
-    const longFluffyChars = ['ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
-    const monsterShakes = new Map();
+  const snowflakes = [];
+  const monsters = [];
+  const chineseChars = ['天', '使', '棘', '雪', '血', '死', '亡'];
+  const fluffyChars = ['´ཀ`', '𓉸ྀི', 'ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
+  const longFluffyChars = ['ᓚ₍ ^. .^₎🤍🔪', 'ᕦ⊙෴⊙ᕤ'];
+  const monsterShakes = new Map();
+
+  const applyCameraShift = (dy) => {
+    if (!dy) return;
+    player.y += dy;
+    platforms.forEach((p) => {
+      p.y += dy;
+    });
+    monsters.forEach((m) => {
+      m.y += dy;
+    });
+    floatingTexts.forEach((t) => {
+      t.y += dy;
+    });
+    cameraY += dy;
+  };
+
+  const createEndMessage = () => {
+    if (!finalPlatform) return;
+    const chars = selectedQuote.split('');
+    const width = canvas.width / dpr;
+    floatingTexts = chars.map((char) => ({
+      char,
+      x: width / 2 + (Math.random() * 200 - 100),
+      y: finalPlatform.y - 200 - Math.random() * 200,
+      size: 26 + Math.random() * 20,
+      opacity: 0,
+      floatSpeed: 0.1 + Math.random() * 0.15
+    }));
+  };
+
+  const renderFloatingTexts = (ctxRender) => {
+    if (!floatingTexts.length) return;
+    floatingTexts.forEach((t) => {
+      t.opacity = Math.min(t.opacity + 0.005, 1);
+      t.y += Math.sin(Date.now() / 1000 + t.x) * t.floatSpeed;
+      const screenY = t.y;
+      ctxRender.save();
+      ctxRender.globalAlpha = t.opacity;
+      ctxRender.fillStyle = 'white';
+      ctxRender.font = `${t.size}px serif`;
+      ctxRender.fillText(t.char, t.x, screenY);
+      ctxRender.restore();
+    });
+  };
+
+  const resetFinalState = () => {
+    platformGenerationEnabled = true;
+    finalModeEnabled = false;
+    finalCameraStarted = false;
+    finalCameraSettled = false;
+    finalPlatform = null;
+    targetCameraY = 0;
+    floatingTexts = [];
+    selectedQuote = END_QUOTES[Math.floor(Math.random() * END_QUOTES.length)];
+  };
+
+  const createFinalPlatform = (startScore) => {
+    const height = canvas.height / dpr;
+    const randomOffset = Math.random() * 3000;
+    const targetScore = FINAL_SCORE_THRESHOLD + randomOffset;
+    const gapToFinal = targetScore - startScore;
+    const baseY = height * 0.7;
+    const finalY = baseY - gapToFinal;
+    const finalX = Math.max(
+      6,
+      Math.random() * Math.max(10, canvas.width / dpr - PLATFORM_WIDTH - 12)
+    );
+    const platform = {
+      x: finalX,
+      y: finalY,
+      width: PLATFORM_WIDTH,
+      height: PLATFORM_HEIGHT,
+      isFinal: true
+    };
+    platforms.push(platform);
+    finalPlatform = platform;
+  };
+
+  const enterFinalMode = (platform) => {
+    if (finalModeEnabled) return;
+    finalModeEnabled = true;
+    finalCameraStarted = true;
+    finalCameraSettled = false;
+    finalPlatform = platform;
+    platformGenerationEnabled = false;
+
+    const height = canvas.height / dpr;
+    const idealPlatformScreenY = height * 0.75;
+    targetCameraY = idealPlatformScreenY;
+    createEndMessage();
+  };
+
+  const updateFinalCamera = () => {
+    if (!finalCameraStarted || !finalPlatform) return;
+    const desiredScreenY = targetCameraY;
+    const currentScreenY = finalPlatform.y;
+    const delta = (desiredScreenY - currentScreenY) * 0.08;
+    if (Math.abs(desiredScreenY - currentScreenY) < 0.5) {
+      applyCameraShift(desiredScreenY - currentScreenY);
+      finalCameraSettled = true;
+      finalCameraStarted = false;
+      return;
+    }
+    applyCameraShift(delta);
+  };
 
     const initPlatforms = () => {
       platforms.length = 0;
@@ -1165,19 +1289,24 @@ export default function CelestialJump() {
       }
     };
 
-    const initMonsters = () => {
-      monsters.length = 0;
-      monsterShakes.clear();
-    };
+  const initMonsters = () => {
+    monsters.length = 0;
+    monsterShakes.clear();
+  };
 
     const clearAsciiBg = () => {
       asciiBgRef.current = null;
       asciiPendingRef.current = false;
     };
 
-    initPlatforms();
-    initMonsters();
-    clearAsciiBg();
+  initPlatforms();
+  initMonsters();
+  clearAsciiBg();
+  resetFinalState();
+  currentScore = DEBUG ? FINAL_TEST_SCORE : 0;
+  setScore(Math.floor(currentScore));
+  createFinalPlatform(currentScore);
+  scheduleNextAsciiCheck(currentScore);
 
     const keys = {};
     let touchStartX = 0;
@@ -1491,7 +1620,6 @@ export default function CelestialJump() {
 
     // ========= 主循环 =========
     let animationId = null;
-    let currentScore = 0;
     let lastTime = 0;
     const FIXED_TIMESTEP = 1000 / 60;
     let accumulator = 0;
@@ -1607,6 +1735,9 @@ export default function CelestialJump() {
           ) {
             player.velocityY = JUMP_FORCE;
             handleLanding(player.x + player.width / 2, platform.y);
+            if (platform.isFinal && !finalModeEnabled) {
+              enterFinalMode(platform);
+            }
             if (angelModeRef.current === 'thorn') {
               const speed = Math.hypot(player.velocityX, player.velocityY);
               if (speed > 0.5) {
@@ -1631,13 +1762,11 @@ export default function CelestialJump() {
       }
 
       // 相机 / 计分
-      let justReachedFinal = false;
-
       if (
         player.y < height * 0.4 &&
         player.velocityY < 0 &&
         !isGameOverRef.current &&
-        !finalPlateauReached
+        !finalModeEnabled
       ) {
         const scrollAmount = -player.velocityY;
 
@@ -1649,49 +1778,44 @@ export default function CelestialJump() {
         currentScore += scrollAmount;
         if (currentScore >= FINAL_SCORE) {
           currentScore = FINAL_SCORE;
-          finalPlateauReached = true;
-          justReachedFinal = true;
         }
         setScore(Math.floor(currentScore));
       }
 
-      if (justReachedFinal) {
-        const finalPlatform = {
-          x: width / 2 - PLATFORM_WIDTH / 2,
-          y: height * 0.7,
-          width: PLATFORM_WIDTH,
-          height: PLATFORM_HEIGHT
-        };
-        platforms.push(finalPlatform);
-      }
+      const highestPlatformY = platforms.reduce((min, p) => {
+        if (p.isFinal) return min;
+        return p.y < min ? p.y : min;
+      }, Infinity);
 
-      const highestPlatformY = platforms.reduce(
-        (min, p) => (p.y < min ? p.y : min),
-        Infinity
-      );
+      const canSpawnPlatforms =
+        platformGenerationEnabled && highestPlatformY > SPAWN_BUFFER_Y;
 
-      if (highestPlatformY > SPAWN_BUFFER_Y && !finalPlateauReached) {
+      if (canSpawnPlatforms) {
         let x;
         let attempts = 0;
         let tooClose = true;
         const newY = highestPlatformY - (70 + Math.random() * 30);
 
-        while (tooClose && attempts < 60) {
-          x = Math.random() * (width - PLATFORM_WIDTH);
-          tooClose = isTooCloseToExistingPlatforms(x, newY);
-          attempts++;
-        }
+        if (finalPlatform && newY <= finalPlatform.y - MIN_VERTICAL_GAP) {
+          platformGenerationEnabled = false;
+        } else {
+          while (tooClose && attempts < 60) {
+            x = Math.random() * (width - PLATFORM_WIDTH);
+            tooClose = isTooCloseToExistingPlatforms(x, newY);
+            attempts++;
+          }
 
-        if (!tooClose) {
-          const isIce = Math.random() > 0.75;
-          const newPlatform = {
-            x,
-            y: newY,
-            width: PLATFORM_WIDTH,
-            height: PLATFORM_HEIGHT
-          };
-          platforms.push(newPlatform);
-          if (isIce) icePlatforms.add(newPlatform);
+          if (!tooClose) {
+            const isIce = Math.random() > 0.75;
+            const newPlatform = {
+              x,
+              y: newY,
+              width: PLATFORM_WIDTH,
+              height: PLATFORM_HEIGHT
+            };
+            platforms.push(newPlatform);
+            if (isIce) icePlatforms.add(newPlatform);
+          }
         }
       }
 
@@ -1705,12 +1829,12 @@ export default function CelestialJump() {
         Math.random() > 0.99 &&
         platforms.length > 0 &&
         monsters.length < maxMonsters &&
-        !finalPlateauReached
+        platformGenerationEnabled
       ) {
-        const highestY = platforms.reduce(
-          (min, p) => (p.y < min ? p.y : min),
-          Infinity
-        );
+        const highestY = platforms.reduce((min, p) => {
+          if (p.isFinal) return min;
+          return p.y < min ? p.y : min;
+        }, Infinity);
         const spawnY = highestY - 120;
 
         if (spawnY <= SPAWN_BUFFER_Y - 40) {
@@ -1793,6 +1917,7 @@ export default function CelestialJump() {
       }
 
       for (let i = platforms.length - 1; i >= 0; i--) {
+        if (platforms[i].isFinal) continue;
         if (platforms[i].y > height) {
           const removed = platforms.splice(i, 1)[0];
           icePlatforms.delete(removed);
@@ -1803,14 +1928,6 @@ export default function CelestialJump() {
         if (monsters[i].y > height + 100) {
           const removed = monsters.splice(i, 1)[0];
           monsterShakes.delete(removed);
-        }
-      }
-
-      if (finalPlateauReached) {
-        const topLimit = height * 0.25;
-        if (player.y < topLimit) {
-          player.y = topLimit;
-          if (player.velocityY < 0) player.velocityY = 0;
         }
       }
 
@@ -1881,6 +1998,7 @@ export default function CelestialJump() {
 
       updateParticles(dt);
       updateThornTrail(dt);
+      updateFinalCamera();
 
       // ASCII 背景触发：检查点骰子 + 权重
       if (
@@ -2087,6 +2205,8 @@ export default function CelestialJump() {
         ctx.restore();
       }
 
+      renderFloatingTexts(ctx);
+
       // 粒子绘制
       drawParticles(ctx, dpr);
     };
@@ -2149,11 +2269,8 @@ export default function CelestialJump() {
 
       isGameOverRef.current = false;
       setGameOver(false);
-      currentScore = 0;
-      setScore(0);
-
-        const width = canvas.width / dpr;
-        const height = canvas.height / dpr;
+      const width = canvas.width / dpr;
+      const height = canvas.height / dpr;
 
       cameraY = 0;
       angelModeRef.current = 'none';
@@ -2161,11 +2278,12 @@ export default function CelestialJump() {
       particlesRef.current.forEach((p) => (p.active = false));
       frontSnowRef.current.forEach((p) => (p.active = false));
       thornTrailRef.current = [];
-      scheduleNextAsciiCheck(0);
+      clearAsciiBg();
+      resetFinalState();
 
       player.x = width / 2 - PLAYER_SIZE / 2;
       player.y = height * 0.7;
-        player.velocityY = 0;
+      player.velocityY = 0;
       player.velocityX = 0;
       player.rotation = 0;
       player.rotationSpeed = 0.05;
@@ -2181,21 +2299,24 @@ export default function CelestialJump() {
         clearTimeout(shakeTimeoutRef.current);
         shakeTimeoutRef.current = null;
       }
-      clearAsciiBg();
 
-        lastTime = performance.now();
-        accumulator = 0;
+      currentScore = DEBUG ? FINAL_TEST_SCORE : 0;
+      setScore(Math.floor(currentScore));
+      initPlatforms();
+      initMonsters();
+      createFinalPlatform(currentScore);
+      scheduleNextAsciiCheck(currentScore);
 
-        initPlatforms();
-        initMonsters();
+      lastTime = performance.now();
+      accumulator = 0;
 
-        setTimeout(() => {
-          if (!isGameOverRef.current) {
-            animationId = requestAnimationFrame(gameLoop);
-          }
-        }, 50);
-      }
-    };
+      setTimeout(() => {
+        if (!isGameOverRef.current) {
+          animationId = requestAnimationFrame(gameLoop);
+        }
+      }, 50);
+    }
+  };
 
     lastTime = performance.now();
     animationId = requestAnimationFrame(gameLoop);
