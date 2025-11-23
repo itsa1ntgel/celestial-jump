@@ -1103,6 +1103,7 @@ export default function CelestialJump() {
   let finalCameraSettled = false;
   let finalPlatform = null;
   let targetCameraY = 0;
+  let finalCameraShift = 0;
   let selectedQuote = '';
   let floatingTexts = [];
 
@@ -1155,11 +1156,13 @@ export default function CelestialJump() {
     if (!finalPlatform) return;
     const chars = selectedQuote.split('');
     const width = canvas.width / dpr;
-    floatingTexts = chars.map((char) => ({
+    const spacing = 30;
+    const startX = width / 2 - ((chars.length - 1) * spacing) / 2;
+    floatingTexts = chars.map((char, idx) => ({
       char,
-      x: width / 2 + (Math.random() * 200 - 100),
-      y: finalPlatform.y - 200 - Math.random() * 200,
-      size: 26 + Math.random() * 20,
+      x: startX + idx * spacing + (Math.random() * 8 - 4),
+      y: finalPlatform.y - 200 - Math.random() * 120,
+      size: 26 + Math.random() * 18,
       opacity: 0,
       floatSpeed: 0.1 + Math.random() * 0.15
     }));
@@ -1187,6 +1190,7 @@ export default function CelestialJump() {
     finalCameraSettled = false;
     finalPlatform = null;
     targetCameraY = 0;
+    finalCameraShift = 0;
     floatingTexts = [];
     selectedQuote = END_QUOTES[Math.floor(Math.random() * END_QUOTES.length)];
   };
@@ -1224,21 +1228,22 @@ export default function CelestialJump() {
     const height = canvas.height / dpr;
     const idealPlatformScreenY = height * 0.75;
     targetCameraY = idealPlatformScreenY;
+    finalCameraShift = idealPlatformScreenY - platform.y;
     createEndMessage();
   };
 
   const updateFinalCamera = () => {
     if (!finalCameraStarted || !finalPlatform) return;
-    const desiredScreenY = targetCameraY;
-    const currentScreenY = finalPlatform.y;
-    const delta = (desiredScreenY - currentScreenY) * 0.08;
-    if (Math.abs(desiredScreenY - currentScreenY) < 0.5) {
-      applyCameraShift(desiredScreenY - currentScreenY);
+    const delta = finalCameraShift * 0.08;
+    if (Math.abs(finalCameraShift) < 0.5) {
+      applyCameraShift(finalCameraShift);
+      finalCameraShift = 0;
       finalCameraSettled = true;
       finalCameraStarted = false;
       return;
     }
     applyCameraShift(delta);
+    finalCameraShift -= delta;
   };
 
     const initPlatforms = () => {
@@ -1776,9 +1781,6 @@ export default function CelestialJump() {
         monsters.forEach((m) => (m.y += scrollAmount));
 
         currentScore += scrollAmount;
-        if (currentScore >= FINAL_SCORE) {
-          currentScore = FINAL_SCORE;
-        }
         setScore(Math.floor(currentScore));
       }
 
