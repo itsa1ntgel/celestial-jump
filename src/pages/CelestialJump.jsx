@@ -94,6 +94,8 @@ const ASCII_BACKGROUNDS = [
   ]
 ];
 
+const ASCII_PARALLAX = 0.65;
+
 export default function CelestialJump() {
   const canvasRef = useRef(null);
   const snowCanvasRef = useRef(null);
@@ -101,6 +103,7 @@ export default function CelestialJump() {
   const [highScore, setHighScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [shakeActive, setShakeActive] = useState(false);
+  const [musicEnabled, setMusicEnabled] = useState(true);
 
   const gameStateRef = useRef(null);
   const isGameOverRef = useRef(false);
@@ -123,6 +126,7 @@ export default function CelestialJump() {
   const lastStompIndexRef = useRef(-1);
   const shakeTimeoutRef = useRef(null);
   const warmStompedRef = useRef(false);
+  const musicEnabledRef = useRef(true);
   const asciiBgRef = useRef(null);
   const asciiPendingRef = useRef(false);
   const asciiCacheRef = useRef(new Map());
@@ -239,6 +243,7 @@ export default function CelestialJump() {
 
     // 用户第一次按键 / 触摸时启动 BGM
     const startBgmIfNeeded = () => {
+      if (!musicEnabledRef.current) return;
       const audio = bgmRef.current;
       if (!audio || bgmStartedRef.current) return;
 
@@ -1041,7 +1046,7 @@ export default function CelestialJump() {
         const lines = ASCII_BACKGROUNDS[pick];
         const baked = bakeAscii(lines);
         // 保证生成时在屏幕顶外：随着 cameraY 增长，自然从顶部滚入
-        const spawnWorldY = -cameraY - baked.height - 160;
+        const spawnWorldY = -(cameraY * ASCII_PARALLAX) - baked.height - 160;
         asciiBgRef.current = { ...baked, worldY: spawnWorldY };
         asciiPendingRef.current = true;
       }
@@ -1123,13 +1128,13 @@ export default function CelestialJump() {
       // ASCII 背景：居中，随 cameraY 被动滚动
       if (asciiBgRef.current) {
         const { bitmap, width: bw, height: bh, worldY } = asciiBgRef.current;
-        const screenY = worldY + cameraY;
+        const screenY = worldY + cameraY * ASCII_PARALLAX;
         const screenX = (width - bw) / 2;
 
-        if (screenY > height || screenY + bh < 0) {
+        if (screenY > height) {
           asciiBgRef.current = null;
           asciiPendingRef.current = false;
-        } else {
+        } else if (screenY + bh >= 0) {
           ctx.drawImage(bitmap, screenX, screenY);
         }
       }
@@ -1227,6 +1232,8 @@ export default function CelestialJump() {
           bgmRef.current.volume = BGM_VOLUME;
         }
         bgmStartedRef.current = false;
+        musicEnabledRef.current = true;
+        setMusicEnabled(true);
 
         isGameOverRef.current = false;
         setGameOver(false);
@@ -1331,25 +1338,63 @@ export default function CelestialJump() {
       <div className="max-w-md w-full px-4 relative z-20">
         {/* 顶部标题：上下两行 + 左右大星星 */}
         <div className="mt-1 mb-3 flex items-center justify-center gap-5">
-          <span
-            className="text-[2.3rem] md:text-[2.6rem] text-slate-800 leading-none inline-block"
+          <button
+            type="button"
+            onClick={() => {
+              const next = !musicEnabledRef.current;
+              musicEnabledRef.current = next;
+              setMusicEnabled(next);
+              if (!next) {
+                if (bgmRef.current) {
+                  bgmRef.current.pause();
+                  bgmRef.current.currentTime = 0;
+                  bgmStartedRef.current = false;
+                }
+              } else {
+                startBgmIfNeededRef.current?.();
+              }
+            }}
+            className="transition-transform duration-200 focus:outline-none"
             style={{ transform: 'rotate(-12deg)' }}
-            aria-hidden
+            aria-label="Toggle music"
           >
-            𝄞
-          </span>
+            <span
+              className={`text-[2.3rem] md:text-[2.6rem] leading-none inline-block ${musicEnabled ? 'text-slate-800' : 'text-slate-400'}`}
+            >
+              𝄞
+            </span>
+          </button>
           <h1 className="font-henny-penny text-[2.2rem] md:text-[2.6rem] leading-[1.05] tracking-[0.28em] text-slate-900 text-center drop-shadow-sm">
             CELESTIAL
             <br />
             JUMP
           </h1>
-          <span
-            className="text-[2.3rem] md:text-[2.6rem] text-slate-800 leading-none inline-block"
+          <button
+            type="button"
+            onClick={() => {
+              const next = !musicEnabledRef.current;
+              musicEnabledRef.current = next;
+              setMusicEnabled(next);
+              if (!next) {
+                if (bgmRef.current) {
+                  bgmRef.current.pause();
+                  bgmRef.current.currentTime = 0;
+                  bgmStartedRef.current = false;
+                }
+              } else {
+                startBgmIfNeededRef.current?.();
+              }
+            }}
+            className="transition-transform duration-200 focus:outline-none"
             style={{ transform: 'rotate(12deg)' }}
-            aria-hidden
+            aria-label="Toggle music"
           >
-            𝄞
-          </span>
+            <span
+              className={`text-[2.3rem] md:text-[2.6rem] leading-none inline-block ${musicEnabled ? 'text-slate-800' : 'text-slate-400'}`}
+            >
+              𝄞
+            </span>
+          </button>
         </div>
 
         {/* 分数栏 */}
@@ -1395,14 +1440,14 @@ export default function CelestialJump() {
                     : score < 2000
                       ? "you can't be real"
                       : score < 5000
-                    ? 'not so smart'
-                    : score >= 40000
-                      ? 'lets die in a beautiful winter'
-                      : score >= 20000
-                        ? 'Well done. Now go get some rest gang'
-                        : score >= 10000
-                          ? 'Have you seen the snow?'
-                          : 'Journey Complete'}
+                        ? 'not so smart gng'
+                        : score >= 40000
+                          ? 'lets die in a beautiful winter'
+                          : score >= 20000
+                            ? 'Well done. Now go get some rest gang'
+                            : score >= 10000
+                              ? 'Have you seen the snow?'
+                              : 'not so smart gng'}
             </h2>
 
             <div className="space-y-2">
