@@ -521,6 +521,53 @@ export default function CelestialJump() {
   const nextAsciiCheckRef = useRef(ASCII_CHECK_MIN);
   const showNameOverlayRef = useRef(false);
   const ensureBgmPlayingRef = useRef(() => {});
+  const playerNameRef = useRef('');
+
+  const attemptResumeBgm = () => {
+    if (showNameOverlayRef.current) return;
+    ensureBgmPlayingRef.current?.();
+  };
+
+  const handleNameSubmit = () => {
+    const name = nameInput.trim();
+    if (name.length < 1) {
+      setNameError('name too short');
+      return;
+    }
+    if (name.length > 16) {
+      setNameError('name too long');
+      return;
+    }
+    setPlayerName(name);
+    playerNameRef.current = name;
+    localStorage.setItem(NAME_STORAGE_KEY, name);
+    setNameError('');
+    setOverlayClosing(true);
+    setTimeout(() => {
+      showNameOverlayRef.current = false;
+      setShowNameOverlay(false);
+      setOverlayClosing(false);
+      attemptResumeBgm();
+    }, 320);
+  };
+
+  const handleOpenNameOverlay = () => {
+    setNameInput(playerNameRef.current || '');
+    setNameError('');
+    showNameOverlayRef.current = true;
+    setOverlayClosing(false);
+    setShowNameOverlay(true);
+    if (bgmRef.current) {
+      bgmRef.current.pause();
+    }
+  };
+
+  const handleNameKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleNameSubmit();
+    }
+  };
 
   const gameStateRef = useRef(null);
   const isGameOverRef = useRef(false);
@@ -549,20 +596,23 @@ export default function CelestialJump() {
   const asciiCacheRef = useRef(new Map());
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const snowCanvas = snowCanvasRef.current;
-    const snowCtx = snowCanvas?.getContext('2d');
-
     const savedName = localStorage.getItem(NAME_STORAGE_KEY);
     if (savedName && savedName.trim()) {
       setPlayerName(savedName.trim());
+      playerNameRef.current = savedName.trim();
       showNameOverlayRef.current = false;
       setShowNameOverlay(false);
     } else {
       setShowNameOverlay(true);
       showNameOverlayRef.current = true;
     }
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const snowCanvas = snowCanvasRef.current;
+    const snowCtx = snowCanvas?.getContext('2d');
 
     // ========= 工具函数：音效池 =========
     const createAudioPool = (path, volume = 1, poolSize = 3) => {
@@ -1212,8 +1262,7 @@ export default function CelestialJump() {
         bgmFadeIntervalRef.current = null;
       }
       if (bgmRef.current) {
-        bgmRef.current.pause();
-        bgmRef.current.currentTime = 0;
+        bgmRef.current.pause(); // 保留进度，不重置 currentTime
       }
       bgmStartedRef.current = false;
     };
