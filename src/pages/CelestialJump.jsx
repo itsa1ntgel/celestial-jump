@@ -100,8 +100,8 @@ const MAX_FRONT_SNOW = 20;
 const ANGEL_TEST_SEQUENCE = ['thorn', 'blood', 'snow'];
 const LONG_FLUFFY_HITBOX_WIDTH = 80;
 const LONG_FLUFFY_HITBOX_HEIGHT = 60;
-const THORN_TRAIL_MAX = 6;
-const THORN_TRAIL_MAX_LIFE = 0.4;
+const THORN_TRAIL_MAX = 8;
+const THORN_TRAIL_MAX_LIFE = 0.6;
 
 export default function CelestialJump() {
   const canvasRef = useRef(null);
@@ -1057,7 +1057,7 @@ export default function CelestialJump() {
 
       if (angelModeRef.current === 'thorn') {
         const speed = Math.hypot(player.velocityX, player.velocityY);
-        if (speed > 0.8) {
+        if (speed > 0.5) {
           const trail = thornTrailRef.current;
           trail.push({
             x: player.x + player.width / 2,
@@ -1086,7 +1086,7 @@ export default function CelestialJump() {
             handleLanding(player.x + player.width / 2, platform.y);
             if (angelModeRef.current === 'thorn') {
               const speed = Math.hypot(player.velocityX, player.velocityY);
-              if (speed > 0.8) {
+              if (speed > 0.5) {
                 const trail = thornTrailRef.current;
                 trail.push({
                   x: player.x + player.width / 2,
@@ -1314,7 +1314,7 @@ export default function CelestialJump() {
             handleLanding(player.x + player.width / 2, monster.y);
             if (angelModeRef.current === 'thorn') {
               const speed = Math.hypot(player.velocityX, player.velocityY);
-              if (speed > 0.8) {
+              if (speed > 0.5) {
                 const trail = thornTrailRef.current;
                 trail.push({
                   x: player.x + player.width / 2,
@@ -1463,9 +1463,9 @@ export default function CelestialJump() {
         const baseSize = player.width / 2;
         thornTrailRef.current.forEach((t) => {
           const alpha = Math.max(0, 1 - t.life / THORN_TRAIL_MAX_LIFE);
-          const stretch = Math.min(0.35, (t.speed || 0) * 0.015);
+          const stretch = Math.min(0.45, (t.speed || 0) * 0.02);
           ctx.save();
-          ctx.globalAlpha = 0.6 * alpha;
+          ctx.globalAlpha = 0.7 * alpha;
           ctx.translate(t.x, t.y);
           ctx.scale(1 + stretch, 1 - stretch * 0.3);
           drawStar(0, 0, baseSize * 0.9, player.rotation);
