@@ -631,7 +631,7 @@ export default function CelestialJump() {
     const PLATFORM_HEIGHT = 12;
     const BOARD_ASPECT = 9 / 16; // width / height ratio for playfield
     const MIN_BOARD_HEIGHT = 520;
-    const MAX_BOARD_HEIGHT = 680;
+    const MAX_BOARD_HEIGHT = 640;
     const DEBUG = false; // 开发阶段快速测试终局
     const FINAL_SCORE = 50000;
     const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
@@ -1085,7 +1085,7 @@ export default function CelestialJump() {
       const rawHeight = Math.round(width / BOARD_ASPECT);
       const maxAllowedHeight = Math.min(
         MAX_BOARD_HEIGHT,
-        (window.innerHeight || MAX_BOARD_HEIGHT) - 160
+        (window.innerHeight || MAX_BOARD_HEIGHT) - 180
       );
       const clampedMax = Math.max(MIN_BOARD_HEIGHT, maxAllowedHeight);
       const height = Math.max(MIN_BOARD_HEIGHT, Math.min(rawHeight, clampedMax));
