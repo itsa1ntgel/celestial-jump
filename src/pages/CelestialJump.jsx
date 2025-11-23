@@ -311,63 +311,7 @@ export default function CelestialJump() {
       }
     };
 
-    const initMonsters = () => {
-      monsters.length = 0;
-      const height = canvas.height / dpr;
-
-      for (let i = 0; i < 1; i++) {
-        const isChinese = Math.random() > 0.5;
-        let x, y, attempts = 0;
-        let tooClose = true;
-
-        while (tooClose && attempts < 20) {
-          x = Math.random() * (canvas.width / dpr - 40);
-          y = Math.random() * height * 0.5;
-          tooClose = false;
-
-          for (const monster of monsters) {
-            const dx = x - monster.x;
-            const dy = y - monster.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < 120) {
-              tooClose = true;
-              break;
-            }
-          }
-          attempts++;
-        }
-
-        if (!tooClose || attempts === 20) {
-          let selectedChar;
-          if (isChinese) {
-            selectedChar =
-              chineseChars[Math.floor(Math.random() * chineseChars.length)];
-          } else {
-            selectedChar = fluffyChars.slice(0, 2)[Math.floor(Math.random() * 2)];
-          }
-
-          monsters.push({
-            x,
-            y,
-            width: 50,
-            height: 50,
-            type: isChinese ? 'chinese' : 'fluffy',
-            char: selectedChar,
-            color: isChinese
-              ? '#fff'
-              : Math.random() > 0.5
-                ? '#e0f2fe'
-                : '#fff',
-            bobOffset: Math.random() * Math.PI * 2,
-            rotation: Math.random() * Math.PI * 2,
-            hit: false
-          });
-        }
-      }
-    };
-
     initPlatforms();
-    initMonsters();
 
     const keys = {};
     let touchStartX = 0;
@@ -644,11 +588,13 @@ export default function CelestialJump() {
       deathAnimationRef.current = {
         active: true,
         startTime: time,
-        duration: 500,
+        pauseDuration: 300,
+        fallDuration: 700,
+        fallStartTime: null,
         pendingGameOver: false,
         cause: 'monster'
       };
-      player.velocityY = Math.max(player.velocityY, 12);
+      player.velocityY = 0;
       player.velocityX = 0;
       player.rotationSpeed = 0.18;
     };
@@ -659,12 +605,24 @@ export default function CelestialJump() {
 
       if (deathAnimationRef.current.active) {
         const anim = deathAnimationRef.current;
+        const elapsed = time - anim.startTime;
+
+        if (elapsed < anim.pauseDuration) {
+          player.rotation += player.rotationSpeed * 0.6;
+          return;
+        }
+
+        if (!anim.fallStartTime) {
+          anim.fallStartTime = time;
+          player.velocityY = Math.max(player.velocityY, 10);
+        }
+
         player.velocityY += GRAVITY * 2.4;
         player.y += player.velocityY;
         player.rotation += player.rotationSpeed;
 
-        const elapsed = time - anim.startTime;
-        if (elapsed >= anim.duration || player.y > height + 80) {
+        const fallElapsed = time - anim.fallStartTime;
+        if (fallElapsed >= anim.fallDuration || player.y > height + 80) {
           anim.active = false;
           anim.pendingGameOver = true;
         }
@@ -776,12 +734,13 @@ export default function CelestialJump() {
         }
       }
 
-      let maxMonsters = 1;
-      if (currentScore >= 20000) maxMonsters = 4;
-      else if (currentScore >= 10000) maxMonsters = 3;
-      else if (currentScore >= 5000) maxMonsters = 2;
+    let maxMonsters = 0;
+    if (currentScore >= 20000) maxMonsters = 4;
+    else if (currentScore >= 10000) maxMonsters = 3;
+    else if (currentScore >= 5000) maxMonsters = 2;
 
       if (
+        currentScore >= 5000 &&
         Math.random() > 0.99 &&
         platforms.length > 0 &&
         monsters.length < maxMonsters &&
