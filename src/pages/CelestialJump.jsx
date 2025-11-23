@@ -493,7 +493,7 @@ const THORN_TRAIL_MAX = 10;
 const THORN_TRAIL_MAX_LIFE = 0.6;
 const ASCII_CHECK_MIN = 1000;
 const ASCII_CHECK_MAX = 2000;
-const ASCII_TRIGGER_CHANCE = 0.15;
+const ASCII_TRIGGER_CHANCE = 0.1;
 const NAME_STORAGE_KEY = 'celestialJump_playerName';
 
 export default function CelestialJump() {
