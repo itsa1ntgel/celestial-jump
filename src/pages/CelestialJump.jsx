@@ -51,7 +51,8 @@ const ASCII_BACKGROUNDS = [
       ' @@@@@@@@@@@@@@@@@@@.......%@@@@@@@@@@@@@@@@@@    ',
       '#@#################@%.-@=:.@%################@#   '
     ],
-    stripDots: true
+    stripDots: true,
+    weight: 15
   },
   {
     name: 'moonisland',
@@ -98,7 +99,8 @@ const ASCII_BACKGROUNDS = [
       '             ⢸                        ',
       '             ⠸                        '
     ],
-    stripDots: true
+    stripDots: true,
+    weight: 10
   },
   {
     name: 'tsj',
@@ -185,7 +187,8 @@ const ASCII_BACKGROUNDS = [
       '                                                         '
     ],
     align: 'right',
-    stripDots: true
+    stripDots: true,
+    weight: 8
   },
   {
     name: 'bunny',
@@ -239,7 +242,8 @@ const ASCII_BACKGROUNDS = [
       '.....................................................'
     ],
     align: 'right',
-    stripDots: true
+    stripDots: true,
+    weight: 8
   },
   {
     name: 'crybaby',
@@ -294,7 +298,8 @@ const ASCII_BACKGROUNDS = [
       '........................................................................................'
     ],
     align: 'center',
-    stripDots: true
+    stripDots: true,
+    weight: 5
   },
   {
     name: 'hellboy',
@@ -307,7 +312,8 @@ const ASCII_BACKGROUNDS = [
       '  ▀                                             '
     ],
     align: 'center',
-    stripDots: true
+    stripDots: true,
+    weight: 9
   },
   {
     name: 'tian',
@@ -360,7 +366,8 @@ const ASCII_BACKGROUNDS = [
       '...............................................................................'
     ],
     align: 'center',
-    stripDots: true
+    stripDots: true,
+    weight: 15
   },
   {
     name: 'shi',
@@ -414,7 +421,8 @@ const ASCII_BACKGROUNDS = [
       '...............................................................................'
     ],
     align: 'center',
-    stripDots: true
+    stripDots: true,
+    weight: 15
   },
   {
     name: 'ji',
@@ -471,7 +479,8 @@ const ASCII_BACKGROUNDS = [
       '...............................................................................'
     ],
     align: 'center',
-    stripDots: true
+    stripDots: true,
+    weight: 15
   }
 ];
 
@@ -482,6 +491,9 @@ const LONG_FLUFFY_HITBOX_WIDTH = 80;
 const LONG_FLUFFY_HITBOX_HEIGHT = 60;
 const THORN_TRAIL_MAX = 10;
 const THORN_TRAIL_MAX_LIFE = 0.6;
+const ASCII_CHECK_MIN = 1000;
+const ASCII_CHECK_MAX = 2000;
+const ASCII_TRIGGER_CHANCE = 0.2;
 
 export default function CelestialJump() {
   const canvasRef = useRef(null);
@@ -500,6 +512,7 @@ export default function CelestialJump() {
     Array.from({ length: MAX_FRONT_SNOW }, () => ({ active: false }))
   );
   const thornTrailRef = useRef([]);
+  const nextAsciiCheckRef = useRef(ASCII_CHECK_MIN);
 
   const gameStateRef = useRef(null);
   const isGameOverRef = useRef(false);
@@ -620,6 +633,28 @@ export default function CelestialJump() {
       const baked = { bitmap: off, width: Math.ceil(w), height: Math.ceil(h) };
       asciiCacheRef.current.set(cacheKey, baked);
       return baked;
+    };
+
+    const getAsciiLines = (bg) =>
+      bg.stripDots ? bg.lines.map((l) => l.replace(/\./g, ' ')) : bg.lines;
+
+    const pickWeightedAscii = () => {
+      const total = ASCII_BACKGROUNDS.reduce(
+        (sum, bg) => sum + (bg.weight || 1),
+        0
+      );
+      let r = Math.random() * total;
+      for (const bg of ASCII_BACKGROUNDS) {
+        r -= bg.weight || 1;
+        if (r <= 0) return bg;
+      }
+      return ASCII_BACKGROUNDS[0];
+    };
+
+    const scheduleNextAsciiCheck = (currentScore) => {
+      const delta =
+        ASCII_CHECK_MIN + Math.random() * (ASCII_CHECK_MAX - ASCII_CHECK_MIN);
+      nextAsciiCheckRef.current = currentScore + delta;
     };
 
     // ========= BGM：只创建，不自动播放 =========
@@ -797,15 +832,15 @@ export default function CelestialJump() {
           kind: 'cross'
         });
       } else if (mode === 'snow') {
-        const count = 4 + Math.floor(Math.random() * 3);
+        const count = 6 + Math.floor(Math.random() * 4); // 6-9 更丰富
         for (let i = 0; i < count; i++) {
           spawnParticle({
             x,
             y,
-            vx: (Math.random() * 40 - 20),
-            vy: -(40 + Math.random() * 30),
-            gravity: 120,
-            maxLife: 0.7,
+            vx: (Math.random() * 50 - 25),
+            vy: -(60 + Math.random() * 40),
+            gravity: 160,
+            maxLife: 0.7 + Math.random() * 0.15,
             size: 2 + Math.random() * 1.5,
             color: 'rgba(255,255,255,0.85)',
             kind: 'snow'
@@ -1017,6 +1052,7 @@ export default function CelestialJump() {
       particlesRef.current.forEach((p) => (p.active = false));
       frontSnowRef.current.forEach((p) => (p.active = false));
       thornTrailRef.current = [];
+      scheduleNextAsciiCheck(0);
 
       // 初始平台
       platforms.push({
@@ -1763,23 +1799,26 @@ export default function CelestialJump() {
       updateParticles(dt);
       updateThornTrail(dt);
 
-      // ASCII 背景触发：达到阈值时若无背景则直接生成
-      const asciiThreshold = 1000;
+      // ASCII 背景触发：检查点骰子 + 权重
       if (
         !asciiBgRef.current &&
         !asciiPendingRef.current &&
-        currentScore >= asciiThreshold
+        currentScore >= nextAsciiCheckRef.current
       ) {
-        const pick = Math.floor(Math.random() * ASCII_BACKGROUNDS.length);
-      const bg = ASCII_BACKGROUNDS[pick];
-      const lines = bg.stripDots
-        ? bg.lines.map((l) => l.replace(/\./g, ' '))
-        : bg.lines;
-      const baked = bakeAscii(lines);
-        // 保证生成时在屏幕顶外：随着 cameraY 增长，自然从顶部滚入
-        const spawnWorldY = -(cameraY * ASCII_PARALLAX) - baked.height - 160;
-        asciiBgRef.current = { ...baked, worldY: spawnWorldY, align: bg.align };
-        asciiPendingRef.current = true;
+        const triggered = Math.random() < ASCII_TRIGGER_CHANCE;
+        scheduleNextAsciiCheck(currentScore);
+        if (triggered) {
+          const bg = pickWeightedAscii();
+          const lines = getAsciiLines(bg);
+          const baked = bakeAscii(lines);
+          const spawnWorldY = -(cameraY * ASCII_PARALLAX) - baked.height - 160;
+          asciiBgRef.current = {
+            ...baked,
+            worldY: spawnWorldY,
+            align: bg.align
+          };
+          asciiPendingRef.current = true;
+        }
       }
     };
 
@@ -2000,8 +2039,8 @@ export default function CelestialJump() {
         if (bgmRef.current) {
           bgmRef.current.pause();
           bgmRef.current.currentTime = 0;
-        bgmRef.current.volume = BGM_VOLUME;
-        bgmRef.current.muted = false;
+          bgmRef.current.volume = BGM_VOLUME;
+          bgmRef.current.muted = false;
       }
       bgmStartedRef.current = false;
       musicEnabledRef.current = true;
@@ -2022,6 +2061,7 @@ export default function CelestialJump() {
       particlesRef.current.forEach((p) => (p.active = false));
       frontSnowRef.current.forEach((p) => (p.active = false));
       thornTrailRef.current = [];
+      scheduleNextAsciiCheck(0);
 
       player.x = width / 2 - PLAYER_SIZE / 2;
       player.y = height * 0.7;
