@@ -1074,12 +1074,16 @@ export default function CelestialJump() {
   const MIN_VERTICAL_GAP = 35;
   const SPAWN_BUFFER_Y = -200;
   const END_QUOTES = [
-    '我不知道你，但是相信你可以。测是吧',
-    '我不知道你怎么样，但是你要相信你自己。',
-    '你已经很努力了。',
-    '有些事情你不必这么赶。',
-    '谢谢你坚持到这里。',
-    '继续往上走，但记得要休息。'
+    'keep it up gang',
+    'love u ♡',
+    'thank u for ur time gng',
+    'u made it here so u can make it out there too',
+    '别放弃',
+    '我不知道你，但你一定可以',
+    '爱',
+    '要爱，不要恨',
+    '感谢你 ♡',
+    '你已经很努力了，朋友'
   ];
 
     const player = {
