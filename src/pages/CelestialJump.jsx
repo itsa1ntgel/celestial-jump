@@ -11,6 +11,13 @@ export default function CelestialJump() {
 
   const gameStateRef = useRef(null);
   const isGameOverRef = useRef(false);
+  const deathAnimationRef = useRef({
+    active: false,
+    startTime: 0,
+    duration: 500,
+    pendingGameOver: false,
+    cause: null
+  });
 
   // ---- 只保留这两个音效：BGM + 踩怪 ----
   const BGM_VOLUME = 0.4;
@@ -20,6 +27,7 @@ export default function CelestialJump() {
   const startBgmIfNeededRef = useRef(() => {});
   const stompPoolRef = useRef(null);
   const lastMonsterSoundRef = useRef(0);
+  const lastStompIndexRef = useRef(-1);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -57,12 +65,15 @@ export default function CelestialJump() {
     bgm.preload = 'auto';
     bgmRef.current = bgm;
 
-    // ========= 踩怪音效（808） =========
-    stompPoolRef.current = createAudioPool(
+    // ========= 踩怪音效：多音色轮播 =========
+    const stompSounds = [
       '/sounds/jump_on_monsters_sound_808.mp3',
-      0.55,
-      4
-    );
+      '/sounds/jump_on_monsters_sound_snare.mp3',
+      '/sounds/jump_on_monsters_sound_CHH.mp3',
+      '/sounds/jump_on_monsters_sound_OHH.mp3',
+      '/sounds/jump_on_monsters_sound_laser.mp3'
+    ];
+    stompPoolRef.current = stompSounds.map((path) => createAudioPool(path, 0.55, 3));
 
     // 用户第一次按键 / 触摸时启动 BGM
     const startBgmIfNeeded = () => {
@@ -119,12 +130,19 @@ export default function CelestialJump() {
     };
 
     const playStompSound = () => {
-      const pool = stompPoolRef.current;
-      if (!pool) return;
+      const pools = stompPoolRef.current;
+      if (!pools || pools.length === 0) return;
+
       const now = performance.now();
       if (now - lastMonsterSoundRef.current < 80) return; // 简单冷却
       lastMonsterSoundRef.current = now;
-      pool.play();
+
+      let idx = Math.floor(Math.random() * pools.length);
+      if (pools.length > 1 && idx === lastStompIndexRef.current) {
+        idx = (idx + 1) % pools.length; // 避免连续同一个音效
+      }
+      lastStompIndexRef.current = idx;
+      pools[idx].play();
     };
 
     // ========= Canvas / 游戏逻辑 =========
@@ -164,7 +182,8 @@ export default function CelestialJump() {
       height: PLAYER_SIZE,
       velocityY: 0,
       velocityX: 0,
-      rotation: 0
+      rotation: 0,
+      rotationSpeed: 0.05
     };
 
     const platforms = [];
@@ -550,9 +569,55 @@ export default function CelestialJump() {
     const FIXED_TIMESTEP = 1000 / 60;
     let accumulator = 0;
 
+    const finalizeGameOver = () => {
+      if (isGameOverRef.current) return;
+
+      isGameOverRef.current = true;
+      deathAnimationRef.current.active = false;
+      deathAnimationRef.current.pendingGameOver = false;
+      setGameOver(true);
+      fadeOutBgm(500);
+      if (currentScore > highScore) {
+        setHighScore(Math.floor(currentScore));
+      }
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+    };
+
+    const startMonsterDeath = (time) => {
+      if (deathAnimationRef.current.active || isGameOverRef.current) return;
+
+      deathAnimationRef.current = {
+        active: true,
+        startTime: time,
+        duration: 500,
+        pendingGameOver: false,
+        cause: 'monster'
+      };
+      player.velocityY = Math.max(player.velocityY, 12);
+      player.velocityX = 0;
+      player.rotationSpeed = 0.18;
+    };
+
     const updateGame = (time) => {
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
+
+      if (deathAnimationRef.current.active) {
+        const anim = deathAnimationRef.current;
+        player.velocityY += GRAVITY * 2.4;
+        player.y += player.velocityY;
+        player.rotation += player.rotationSpeed;
+
+        const elapsed = time - anim.startTime;
+        if (elapsed >= anim.duration || player.y > height + 80) {
+          anim.active = false;
+          anim.pendingGameOver = true;
+        }
+        return;
+      }
 
       if (keys['ArrowLeft'] || keys['a']) {
         player.velocityX = -3.5;
@@ -568,7 +633,7 @@ export default function CelestialJump() {
       player.x += player.velocityX;
       player.velocityY += GRAVITY;
       player.y += player.velocityY;
-      player.rotation += 0.05;
+      player.rotation += player.rotationSpeed;
 
       if (player.x < -player.width) player.x = width;
       if (player.x > width) player.x = -player.width;
@@ -793,33 +858,15 @@ export default function CelestialJump() {
               }
             }, 100);
           } else {
-            // 被怪物撞死：Game Over + BGM 渐隐
-            isGameOverRef.current = true;
-            setGameOver(true);
-            fadeOutBgm(500);
-            if (currentScore > highScore) {
-              setHighScore(Math.floor(currentScore));
-            }
-            if (animationId) {
-              cancelAnimationFrame(animationId);
-              animationId = null;
-            }
+            // 被怪物撞死：播放下落动画，稍后再结束
+            startMonsterDeath(time);
             return;
           }
         }
       }
 
       if (player.y > height + 50) {
-        isGameOverRef.current = true;
-        setGameOver(true);
-        fadeOutBgm(500);
-        if (currentScore > highScore) {
-          setHighScore(Math.floor(currentScore));
-        }
-        if (animationId) {
-          cancelAnimationFrame(animationId);
-          animationId = null;
-        }
+        finalizeGameOver();
       }
     };
 
@@ -868,8 +915,8 @@ export default function CelestialJump() {
       if (snowCtx && snowCanvas) {
         snowCtx.clearRect(0, 0, snowWidth, snowHeight);
 
-        const baseSnowChance = currentScore >= 10000 ? 0.035 : 0.02;
-        if (Math.random() < baseSnowChance) {
+        const baseSnowChance = currentScore >= 10000 ? 0.035 : 0;
+        if (baseSnowChance > 0 && Math.random() < baseSnowChance) {
           snowflakes.push({
             x: Math.random() * snowWidth,
             y: -snowHeight * 0.02 - Math.random() * 40,
@@ -960,6 +1007,13 @@ export default function CelestialJump() {
 
       if (!isGameOverRef.current) {
         renderGame(time);
+
+        if (deathAnimationRef.current.pendingGameOver && !isGameOverRef.current) {
+          deathAnimationRef.current.pendingGameOver = false;
+          finalizeGameOver();
+          return;
+        }
+
         animationId = requestAnimationFrame(gameLoop);
       }
     };
@@ -998,6 +1052,14 @@ export default function CelestialJump() {
         player.velocityY = 0;
         player.velocityX = 0;
         player.rotation = 0;
+        player.rotationSpeed = 0.05;
+        deathAnimationRef.current = {
+          active: false,
+          startTime: 0,
+          duration: 500,
+          pendingGameOver: false,
+          cause: null
+        };
 
         lastTime = performance.now();
         accumulator = 0;
@@ -1051,8 +1113,12 @@ export default function CelestialJump() {
 
   return (
     <div
-      className="min-h-screen w-full bg-gradient-to-b from-[#f7f9fc] via-[#f1f4fb] to-[#e6ebf5] flex flex-col items-center justify-start pt-4 pb-12 overflow-hidden select-none relative"
-      style={{ paddingBottom: 'max(44px, calc(env(safe-area-inset-bottom) + 36px))' }}
+      className="w-full bg-gradient-to-b from-[#f7f9fc] via-[#f1f4fb] to-[#e6ebf5] flex flex-col items-center justify-start overflow-hidden select-none relative"
+      style={{
+        minHeight: '100dvh',
+        paddingTop: 'max(12px, calc(env(safe-area-inset-top, 0px) + 12px))',
+        paddingBottom: 'max(44px, calc(env(safe-area-inset-bottom, 0px) + 36px))'
+      }}
     >
       <canvas
         ref={snowCanvasRef}
@@ -1090,7 +1156,11 @@ export default function CelestialJump() {
 
         {/* 游戏画布 */}
         <div className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4">
-          <canvas ref={canvasRef} className="w-full h-[620px] md:h-[660px] block" />
+          <canvas
+            ref={canvasRef}
+            className="w-full block"
+            style={{ height: 'clamp(520px, 68vh, 680px)' }}
+          />
 
           {gameOver && (
             <div className="absolute inset-0 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center">
