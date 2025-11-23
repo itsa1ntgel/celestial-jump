@@ -1040,7 +1040,8 @@ export default function CelestialJump() {
         const pick = Math.floor(Math.random() * ASCII_BACKGROUNDS.length);
         const lines = ASCII_BACKGROUNDS[pick];
         const baked = bakeAscii(lines);
-        const spawnWorldY = -baked.height - 240; // 固定世界坐标，先藏在屏幕上方
+        // 保证生成时在屏幕顶外：随着 cameraY 增长，自然从顶部滚入
+        const spawnWorldY = -cameraY - baked.height - 160;
         asciiBgRef.current = { ...baked, worldY: spawnWorldY };
         asciiPendingRef.current = true;
       }
@@ -1415,7 +1416,7 @@ export default function CelestialJump() {
             </div>
             <Button
               onClick={handleRestart}
-              className="bg-white/40 text-gray-900 px-8 py-6 rounded-full text-lg font-semibold shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-white/70 hover:bg-white/55 hover:shadow-[0_12px_36px_rgba(0,0,0,0.16)] backdrop-blur-md transition-all duration-300"
+              className="bg-white/18 text-gray-900 px-8 py-6 rounded-full text-lg font-semibold shadow-[0_8px_22px_rgba(0,0,0,0.08)] border border-white/50 hover:bg-white/30 hover:shadow-[0_10px_28px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all duration-300"
               style={{ fontFamily: '"Arial Rounded MT Bold","Arial Rounded MT","Arial",sans-serif' }}
             >
               <RotateCcw className="w-5 h-5 mr-2" />
