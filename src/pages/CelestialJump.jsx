@@ -624,6 +624,33 @@ export default function CelestialJump() {
     if (!canvas) return;
     const snowCanvas = snowCanvasRef.current;
     const snowCtx = snowCanvas?.getContext('2d');
+    const GRAVITY = 0.2;
+    const JUMP_FORCE = -10.5;
+    const PLAYER_SIZE = 30;
+    const PLATFORM_WIDTH = 80;
+    const PLATFORM_HEIGHT = 12;
+    const BOARD_ASPECT = 9 / 16; // width / height ratio for playfield
+    const MIN_BOARD_HEIGHT = 520;
+    const MAX_BOARD_HEIGHT = 740;
+    const DEBUG = false; // 开发阶段快速测试终局
+    const FINAL_SCORE = 50000;
+    const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
+    const FINAL_TEST_SCORE = 46000;
+    const MIN_HORIZONTAL_GAP = 12;
+    const MIN_VERTICAL_GAP = 35;
+    const SPAWN_BUFFER_Y = -200;
+    const END_QUOTES = [
+      'keep it up gang',
+      'love u ♡',
+      'thank u for ur time gng',
+      'u made it here so u can make it out there too',
+      '别放弃',
+      '我不知道你，但你一定可以',
+      '爱',
+      '要爱，不要恨',
+      '感谢你 ♡',
+      '你已经很努力了，朋友'
+    ];
 
     // ========= 工具函数：音效池 =========
     const createAudioPool = (path, volume = 1, poolSize = 3) => {
@@ -1080,34 +1107,6 @@ export default function CelestialJump() {
     resizeCanvas();
     requestAnimationFrame(resizeCanvas);
     window.addEventListener('resize', resizeCanvas);
-
-  const GRAVITY = 0.2;
-  const JUMP_FORCE = -10.5;
-  const PLAYER_SIZE = 30;
-  const PLATFORM_WIDTH = 80;
-  const PLATFORM_HEIGHT = 12;
-  const BOARD_ASPECT = 9 / 16; // width / height ratio for playfield
-  const MIN_BOARD_HEIGHT = 520;
-  const MAX_BOARD_HEIGHT = 740;
-  const DEBUG = false; // 开发阶段快速测试终局
-  const FINAL_SCORE = 50000;
-  const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
-  const FINAL_TEST_SCORE = 46000;
-  const MIN_HORIZONTAL_GAP = 12;
-  const MIN_VERTICAL_GAP = 35;
-  const SPAWN_BUFFER_Y = -200;
-  const END_QUOTES = [
-    'keep it up gang',
-    'love u ♡',
-    'thank u for ur time gng',
-    'u made it here so u can make it out there too',
-    '别放弃',
-    '我不知道你，但你一定可以',
-    '爱',
-    '要爱，不要恨',
-    '感谢你 ♡',
-    '你已经很努力了，朋友'
-  ];
 
     const player = {
       x: canvas.width / (2 * dpr) - PLAYER_SIZE / 2,
