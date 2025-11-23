@@ -520,6 +520,9 @@ export default function CelestialJump() {
   const thornTrailRef = useRef([]);
   const nextAsciiCheckRef = useRef(ASCII_CHECK_MIN);
   const showNameOverlayRef = useRef(false);
+  const ensureBgmPlayingRef = useRef(() => {});
+  const showNameOverlayRef = useRef(false);
+  const showNameOverlayRef = useRef(false);
 
   const gameStateRef = useRef(null);
   const isGameOverRef = useRef(false);
@@ -552,6 +555,17 @@ export default function CelestialJump() {
     if (!canvas) return;
     const snowCanvas = snowCanvasRef.current;
     const snowCtx = snowCanvas?.getContext('2d');
+
+    const savedName = localStorage.getItem(NAME_STORAGE_KEY);
+    if (savedName && savedName.trim()) {
+      setPlayerName(savedName.trim());
+      showNameOverlayRef.current = false;
+      setShowNameOverlay(false);
+    } else {
+      showNameOverlayRef.current = true;
+      setNameInput('');
+      setShowNameOverlay(true);
+    }
 
     const savedName = localStorage.getItem(NAME_STORAGE_KEY);
     if (savedName && savedName.trim()) {
@@ -720,6 +734,18 @@ export default function CelestialJump() {
     };
 
     startBgmIfNeededRef.current = startBgmIfNeeded;
+    ensureBgmPlayingRef.current = ensureBgmPlaying;
+
+    useEffect(() => {
+      showNameOverlayRef.current = showNameOverlay;
+      if (showNameOverlay) {
+        if (bgmRef.current) {
+          bgmRef.current.pause();
+        }
+      } else {
+        attemptResumeBgm();
+      }
+    }, [showNameOverlay]);
 
     const ensureBgmPlaying = () => {
       const audio = bgmRef.current;
@@ -908,6 +934,44 @@ export default function CelestialJump() {
         return;
       }
       angelComboRef.current = char === '天' ? '天' : '';
+    };
+
+    const attemptResumeBgm = () => {
+      if (showNameOverlayRef.current) return;
+      ensureBgmPlaying();
+    };
+
+    const handleNameSubmit = () => {
+      const name = nameInput.trim();
+      if (name.length < 1) {
+        setNameError('name too short');
+        return;
+      }
+      if (name.length > 16) {
+        setNameError('name too long');
+        return;
+      }
+      setPlayerName(name);
+      localStorage.setItem(NAME_STORAGE_KEY, name);
+      setNameError('');
+      setOverlayClosing(true);
+      setTimeout(() => {
+        showNameOverlayRef.current = false;
+        setShowNameOverlay(false);
+        setOverlayClosing(false);
+        attemptResumeBgm();
+      }, 320);
+    };
+
+    const handleOpenNameOverlay = () => {
+      setNameInput(playerName || '');
+      setNameError('');
+      showNameOverlayRef.current = true;
+      setOverlayClosing(false);
+      setShowNameOverlay(true);
+      if (bgmRef.current) {
+        bgmRef.current.pause();
+      }
     };
 
     const ensureFrontSnow = (width, height) => {
@@ -1179,7 +1243,7 @@ export default function CelestialJump() {
     };
 
     const handleShow = () => {
-      startBgmIfNeededRef.current?.();
+      attemptResumeBgm();
     };
 
     const handleVisibility = () => {
@@ -1189,6 +1253,15 @@ export default function CelestialJump() {
 
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('pagehide', handleHide);
+
+    showNameOverlayRef.current = showNameOverlay;
+    if (showNameOverlay) {
+      if (bgmRef.current) {
+        bgmRef.current.pause();
+      }
+    } else {
+      attemptResumeBgm();
+    }
 
     // ========= 绘制 =========
     const drawStar = (x, y, size, rotation) => {
@@ -2004,6 +2077,15 @@ export default function CelestialJump() {
       }
 
       drawStar(cx, cy, starSize, player.rotation);
+      if (playerName) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.font = '12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(playerName, cx, player.y - 6);
+        ctx.restore();
+      }
 
       // 粒子绘制
       drawParticles(ctx, dpr);
@@ -2150,6 +2232,59 @@ export default function CelestialJump() {
     };
   }, [highScore]);
 
+  useEffect(() => {
+    showNameOverlayRef.current = showNameOverlay;
+    if (showNameOverlay) {
+      if (bgmFadeIntervalRef.current) {
+        clearInterval(bgmFadeIntervalRef.current);
+        bgmFadeIntervalRef.current = null;
+      }
+      if (bgmRef.current) {
+        bgmRef.current.pause();
+      }
+    } else {
+      ensureBgmPlayingRef.current?.();
+    }
+  }, [showNameOverlay]);
+
+  const handleNameSubmit = () => {
+    const name = nameInput.trim();
+    if (name.length < 1) {
+      setNameError('name too short');
+      return;
+    }
+    if (name.length > 16) {
+      setNameError('name too long');
+      return;
+    }
+    setPlayerName(name);
+    localStorage.setItem(NAME_STORAGE_KEY, name);
+    setNameError('');
+    setOverlayClosing(true);
+    setTimeout(() => {
+      showNameOverlayRef.current = false;
+      setShowNameOverlay(false);
+      setOverlayClosing(false);
+      ensureBgmPlayingRef.current?.();
+    }, 320);
+  };
+
+  const handleOpenNameOverlay = () => {
+    setNameInput(playerName || '');
+    setNameError('');
+    showNameOverlayRef.current = true;
+    setOverlayClosing(false);
+    setShowNameOverlay(true);
+    if (bgmRef.current) bgmRef.current.pause();
+  };
+
+  const handleNameKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleNameSubmit();
+    }
+  };
+
   const handleRestart = () => {
     startBgmIfNeededRef.current?.();
     if (gameStateRef.current) {
@@ -2173,7 +2308,11 @@ export default function CelestialJump() {
         aria-hidden
       />
 
-      <div className="max-w-md w-full px-4 relative z-20">
+      <div
+        className={`max-w-md w-full px-4 relative z-20 transition duration-300 ${
+          showNameOverlay ? 'blur-md pointer-events-none' : ''
+        }`}
+      >
         {/* 顶部标题：上下两行 + 左右大星星 */}
         <div className="mt-1 mb-3 flex items-center justify-center gap-5">
           <button
@@ -2198,7 +2337,12 @@ export default function CelestialJump() {
               𝄞
             </span>
           </button>
-          <h1 className="font-henny-penny text-[2.2rem] md:text-[2.6rem] leading-[1.05] tracking-[0.28em] text-slate-900 text-center drop-shadow-sm">
+          <h1
+            className="font-henny-penny text-[2.2rem] md:text-[2.6rem] leading-[1.05] tracking-[0.28em] text-slate-900 text-center drop-shadow-sm cursor-pointer select-none"
+            onClick={() => {
+              handleOpenNameOverlay();
+            }}
+          >
             CELESTIAL
             <br />
             JUMP
@@ -2302,6 +2446,32 @@ export default function CelestialJump() {
           )}
         </div>
       </div>
+      {showNameOverlay && (
+        <div
+          className={`fixed inset-0 z-30 flex items-center justify-center transition-opacity duration-300 ${
+            overlayClosing ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-md" />
+          <div className="relative flex flex-col items-center gap-4 px-6 w-full">
+            <div className="text-sm text-white/90 font-normal select-none">
+              who is climbing
+            </div>
+            <div className="w-full max-w-md">
+              <input
+                autoFocus
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onKeyDown={handleNameKeyDown}
+                className="w-full px-4 py-3 rounded-[14px] bg-white/15 border border-white/40 text-white outline-none placeholder-transparent"
+              />
+              {nameError && (
+                <div className="mt-2 text-xs text-red-300">{nameError}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
