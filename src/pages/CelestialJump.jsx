@@ -1056,7 +1056,12 @@ export default function CelestialJump() {
       if (!wrapper) return;
       const width = wrapper.clientWidth;
       const rawHeight = Math.round(width / BOARD_ASPECT);
-      const height = Math.min(MAX_BOARD_HEIGHT, Math.max(MIN_BOARD_HEIGHT, rawHeight));
+      const maxAllowedHeight = Math.min(
+        MAX_BOARD_HEIGHT,
+        (window.innerHeight || MAX_BOARD_HEIGHT) - 120
+      );
+      const clampedMax = Math.max(MIN_BOARD_HEIGHT, maxAllowedHeight);
+      const height = Math.max(MIN_BOARD_HEIGHT, Math.min(rawHeight, clampedMax));
 
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
@@ -1071,6 +1076,7 @@ export default function CelestialJump() {
       }
     };
 
+    resizeCanvas();
     requestAnimationFrame(resizeCanvas);
     const resizeObserver = new ResizeObserver(() => resizeCanvas());
     if (boardRef.current) resizeObserver.observe(boardRef.current);
@@ -1081,9 +1087,9 @@ export default function CelestialJump() {
   const PLAYER_SIZE = 30;
   const PLATFORM_WIDTH = 80;
   const PLATFORM_HEIGHT = 12;
-  const BOARD_ASPECT = 4 / 5; // width / height ratio for playfield
-  const MIN_BOARD_HEIGHT = 420;
-  const MAX_BOARD_HEIGHT = 680;
+  const BOARD_ASPECT = 9 / 16; // width / height ratio for playfield
+  const MIN_BOARD_HEIGHT = 520;
+  const MAX_BOARD_HEIGHT = 740;
   const DEBUG = false; // 开发阶段快速测试终局
   const FINAL_SCORE = 50000;
   const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
@@ -2509,7 +2515,7 @@ export default function CelestialJump() {
         <div
           ref={boardRef}
           className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4"
-          style={{ aspectRatio: '4 / 5' }}
+          style={{ aspectRatio: '9 / 16' }}
         >
           <canvas
             ref={canvasRef}
