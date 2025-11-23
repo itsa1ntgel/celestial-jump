@@ -1413,10 +1413,10 @@ export default function CelestialJump() {
 
         ctx.save();
         ctx.globalAlpha = 0.32 + flicker;
-        ctx.fillStyle = 'rgba(210,220,235,0.35)';
+        ctx.fillStyle = 'rgba(255,236,180,0.35)'; // 外层柔和金光
         ctx.fillRect(cx - player.width * 0.45, beamTop, player.width * 0.9, beamHeight);
-        ctx.globalAlpha = 0.68 + flicker;
-        ctx.fillStyle = 'rgba(225,235,250,0.9)';
+        ctx.globalAlpha = 0.7 + flicker;
+        ctx.fillStyle = 'rgba(255,247,200,0.9)'; // 内层亮金光
         ctx.fillRect(cx - player.width * 0.28, beamTop, player.width * 0.56, beamHeight);
         ctx.restore();
       }
