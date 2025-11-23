@@ -521,8 +521,6 @@ export default function CelestialJump() {
   const nextAsciiCheckRef = useRef(ASCII_CHECK_MIN);
   const showNameOverlayRef = useRef(false);
   const ensureBgmPlayingRef = useRef(() => {});
-  const showNameOverlayRef = useRef(false);
-  const showNameOverlayRef = useRef(false);
 
   const gameStateRef = useRef(null);
   const isGameOverRef = useRef(false);
@@ -561,17 +559,6 @@ export default function CelestialJump() {
       setPlayerName(savedName.trim());
       showNameOverlayRef.current = false;
       setShowNameOverlay(false);
-    } else {
-      showNameOverlayRef.current = true;
-      setNameInput('');
-      setShowNameOverlay(true);
-    }
-
-    const savedName = localStorage.getItem(NAME_STORAGE_KEY);
-    if (savedName && savedName.trim()) {
-      setPlayerName(savedName.trim());
-      setShowNameOverlay(false);
-      showNameOverlayRef.current = false;
     } else {
       setShowNameOverlay(true);
       showNameOverlayRef.current = true;
