@@ -2055,10 +2055,13 @@ export default function CelestialJump() {
       drawStar(cx, cy, starSize, player.rotation);
       if (playerName) {
         ctx.save();
-        ctx.fillStyle = 'rgba(255,255,255,0.92)';
         ctx.font = '12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
+        ctx.lineWidth = 2.4;
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.strokeText(playerName, cx, player.y - 6);
+        ctx.fillStyle = 'rgba(0,0,0,0.9)';
         ctx.fillText(playerName, cx, player.y - 6);
         ctx.restore();
       }
@@ -2433,7 +2436,7 @@ export default function CelestialJump() {
             <div className="text-sm text-white/90 font-normal select-none">
               who is climbing
             </div>
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-md flex items-center gap-2">
               <input
                 autoFocus
                 value={nameInput}
@@ -2441,10 +2444,18 @@ export default function CelestialJump() {
                 onKeyDown={handleNameKeyDown}
                 className="w-full px-4 py-3 rounded-[14px] bg-white/15 border border-white/40 text-white outline-none placeholder-transparent"
               />
-              {nameError && (
-                <div className="mt-2 text-xs text-red-300">{nameError}</div>
-              )}
+              <button
+                type="button"
+                onClick={handleNameSubmit}
+                className="shrink-0 px-3 py-3 rounded-full bg-white/20 border border-white/40 text-white hover:bg-white/30 transition"
+                aria-label="Submit name"
+              >
+                ✓
+              </button>
             </div>
+            {nameError && (
+              <div className="mt-2 text-xs text-red-300">{nameError}</div>
+            )}
           </div>
         </div>
       )}
