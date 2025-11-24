@@ -1106,12 +1106,15 @@ export default function CelestialJump() {
       const wrapper = boardRef.current;
       if (!wrapper) return;
       const rect = wrapper.getBoundingClientRect();
-      const measuredWidth = rect.width || wrapper.clientWidth || 0;
+      let measuredWidth = rect.width || wrapper.clientWidth || 0;
       const measuredHeight = rect.height || 0;
       if (!measuredWidth) {
         resizeAttempts += 1;
-        if (resizeAttempts < 6) requestAnimationFrame(resizeCanvas);
-        return;
+        if (resizeAttempts < 20) {
+          requestAnimationFrame(resizeCanvas);
+          return;
+        }
+        measuredWidth = 360; // 最低兜底，避免首次 0 尺寸卡死
       }
 
       let width = measuredWidth;
