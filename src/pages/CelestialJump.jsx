@@ -620,8 +620,58 @@ export default function CelestialJump() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
     const snowCanvas = snowCanvasRef.current;
+    if (!canvas) return;
+    const tempCtx = canvas.getContext('2d');
+
+    // 占位绘制，避免首屏白屏/压缩感知不到
+    const drawPlaceholder = () => {
+      try {
+        const cssW = canvas.clientWidth || canvas.offsetWidth || 300;
+        const cssH = canvas.clientHeight || canvas.offsetHeight || 200;
+        tempCtx.save();
+        tempCtx.clearRect(0, 0, canvas.width, canvas.height);
+        tempCtx.setTransform(1, 0, 0, 1, 0, 0);
+        tempCtx.fillStyle = '#eef3fb';
+        tempCtx.fillRect(0, 0, cssW, cssH);
+        tempCtx.fillStyle = '#9aa7c7';
+        tempCtx.font = '16px sans-serif';
+        tempCtx.textAlign = 'center';
+        tempCtx.textBaseline = 'middle';
+        tempCtx.fillText('Loading...', cssW / 2, cssH / 2);
+        tempCtx.restore();
+      } catch (e) { }
+    };
+    drawPlaceholder();
+
+    const GRAVITY = 0.2;
+    const JUMP_FORCE = -10.5;
+    const PLAYER_SIZE = 30;
+    const PLATFORM_WIDTH = 80;
+    const PLATFORM_HEIGHT = 12;
+    const BOARD_ASPECT = 9 / 16;
+    const MIN_BOARD_HEIGHT = 520;
+    const MAX_BOARD_HEIGHT = 600;
+    const DEBUG = true; // 开发阶段快速测试终局
+    const FINAL_SCORE = 50000;
+    const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
+    const FINAL_TEST_SCORE = 48000;
+    const MIN_HORIZONTAL_GAP = 12;
+    const MIN_VERTICAL_GAP = 35;
+    const SPAWN_BUFFER_Y = -200;
+    const END_QUOTES = [
+      'keep it up gang',
+      'love u ♡',
+      'thank u for ur time gng',
+      'u made it here so u can make it out there too',
+      '别放弃',
+      '我不知道你，但你一定可以',
+      '爱',
+      '要爱，不要恨',
+      '感谢你 ♡',
+      '你已经很努力了，朋友'
+    ];
+
     const snowCtx = snowCanvas?.getContext('2d');
 
     // ========= 工具函数：音效池 =========
@@ -1049,47 +1099,78 @@ export default function CelestialJump() {
     // ========= Canvas / 游戏逻辑 =========
     const ctx = canvas.getContext('2d');
     const dpr = Math.min(window.devicePixelRatio || 1, 1.8);
+    let resizeAttempts = 0;
+    let initialized = false;
 
     const resizeCanvas = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
+      const wrapper = boardRef.current;
+      if (!wrapper) return;
+      const rect = wrapper.getBoundingClientRect();
+      const measuredWidth = rect.width || wrapper.clientWidth || 0;
+      const measuredHeight = rect.height || 0;
+      if (!measuredWidth || !measuredHeight) {
+        resizeAttempts += 1;
+        if (resizeAttempts < 6) requestAnimationFrame(resizeCanvas);
+        return;
+      }
+
+      let width = measuredWidth;
+      if (width < 320 && typeof window !== 'undefined' && window.innerWidth) {
+        width = Math.min(420, Math.max(width, window.innerWidth - 32));
+      }
+      const rawHeight = Math.round(width / BOARD_ASPECT);
+      const maxAllowedHeight = Math.min(
+        MAX_BOARD_HEIGHT,
+        (window.innerHeight || MAX_BOARD_HEIGHT) - 180
+      );
+      const clampedMax = Math.max(MIN_BOARD_HEIGHT, maxAllowedHeight);
+      const heightGuess = measuredHeight || rawHeight;
+      const height = Math.max(MIN_BOARD_HEIGHT, Math.min(heightGuess, clampedMax));
+
+      wrapper.style.height = `${height}px`;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       if (snowCanvas && snowCtx) {
-        snowCanvas.width = window.innerWidth * dpr;
-        snowCanvas.height = window.innerHeight * dpr;
+        const snowW = (snowCanvas.getBoundingClientRect().width || window.innerWidth) * dpr;
+        const snowH = (snowCanvas.getBoundingClientRect().height || window.innerHeight) * dpr;
+        snowCanvas.width = Math.round(snowW);
+        snowCanvas.height = Math.round(snowH);
         snowCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      if (!initialized) {
+        initialized = true;
+        // 初始化依赖尺寸的逻辑
+        player.x = canvas.width / (2 * dpr) - PLAYER_SIZE / 2;
+        player.y = (canvas.height / dpr) * 0.7;
+        initPlatforms();
+        initMonsters();
+        clearAsciiBg();
+        resetFinalState();
+        currentScore = DEBUG ? FINAL_TEST_SCORE : 0;
+        setScore(Math.floor(currentScore));
+        createFinalPlatform(currentScore);
+        scheduleNextAsciiCheck(currentScore);
+        lastTime = performance.now();
+        accumulator = 0;
+        animationId = requestAnimationFrame(gameLoop);
       }
     };
 
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-  const GRAVITY = 0.2;
-  const JUMP_FORCE = -10.5;
-  const PLAYER_SIZE = 30;
-  const PLATFORM_WIDTH = 80;
-  const PLATFORM_HEIGHT = 12;
-  const DEBUG = false; // 开发阶段快速测试终局
-  const FINAL_SCORE = 50000;
-  const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
-  const FINAL_TEST_SCORE = 46000;
-  const MIN_HORIZONTAL_GAP = 12;
-  const MIN_VERTICAL_GAP = 35;
-  const SPAWN_BUFFER_Y = -200;
-  const END_QUOTES = [
-    'keep it up gang',
-    'love u ♡',
-    'thank u for ur time gng',
-    'u made it here so u can make it out there too',
-    '别放弃',
-    '我不知道你，但你一定可以',
-    '爱',
-    '要爱，不要恨',
-    '感谢你 ♡',
-    '你已经很努力了，朋友'
-  ];
+    requestAnimationFrame(() => {
+      resizeAttempts = 0;
+      resizeCanvas();
+      requestAnimationFrame(resizeCanvas);
+    });
+    const handleWindowResize = () => {
+      resizeAttempts = 0;
+      resizeCanvas();
+    };
+    window.addEventListener('resize', handleWindowResize);
 
     const player = {
       x: canvas.width / (2 * dpr) - PLAYER_SIZE / 2,
@@ -1312,15 +1393,6 @@ export default function CelestialJump() {
       asciiBgRef.current = null;
       asciiPendingRef.current = false;
     };
-
-  initPlatforms();
-  initMonsters();
-  clearAsciiBg();
-  resetFinalState();
-  currentScore = DEBUG ? FINAL_TEST_SCORE : 0;
-  setScore(Math.floor(currentScore));
-  createFinalPlatform(currentScore);
-  scheduleNextAsciiCheck(currentScore);
 
     const keys = {};
     let touchStartX = 0;
@@ -2329,9 +2401,6 @@ export default function CelestialJump() {
     }
   };
 
-    lastTime = performance.now();
-    animationId = requestAnimationFrame(gameLoop);
-
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -2339,7 +2408,7 @@ export default function CelestialJump() {
       window.removeEventListener('pointerup', handleGlobalInteraction);
       window.removeEventListener('click', handleGlobalInteraction);
       window.removeEventListener('touchstart', handleGlobalInteraction);
-      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('resize', handleWindowResize);
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
       canvas.removeEventListener('touchend', handleTouchEnd);
