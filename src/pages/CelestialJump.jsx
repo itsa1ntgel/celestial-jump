@@ -1246,20 +1246,23 @@ export default function CelestialJump() {
     cameraY += dy;
   };
 
-  const createEndMessage = () => {
-    if (!finalPlatform) return;
-    const chars = selectedQuote.split('');
-    const width = canvas.width / dpr;
-    const spacing = 30;
-    const startX = width / 2 - ((chars.length - 1) * spacing) / 2;
-    floatingTexts = chars.map((char, idx) => ({
-      char,
-      x: startX + idx * spacing + (Math.random() * 8 - 4),
-      y: finalPlatform.y - 200 - Math.random() * 120,
-      size: 26 + Math.random() * 18,
-      opacity: 0,
-      floatSpeed: 0.1 + Math.random() * 0.15
-    }));
+    const createEndMessage = () => {
+      if (!finalPlatform) return;
+      const isEnglish = /[A-Za-z]/.test(selectedQuote);
+      const parts = isEnglish
+        ? selectedQuote.split(/\s+/).filter(Boolean)
+        : selectedQuote.split('');
+      const width = canvas.width / dpr;
+      const spacing = isEnglish ? 48 : 30;
+      const startX = width / 2 - ((parts.length - 1) * spacing) / 2;
+      floatingTexts = parts.map((part, idx) => ({
+        char: part,
+        x: startX + idx * spacing + (Math.random() * 8 - 4),
+        y: finalPlatform.y - 200 - Math.random() * 120,
+        size: (isEnglish ? 22 : 26) + Math.random() * (isEnglish ? 10 : 18),
+        opacity: 0,
+        floatSpeed: 0.1 + Math.random() * 0.15
+      }));
   };
 
   const renderFloatingTexts = (ctxRender) => {
@@ -1309,6 +1312,15 @@ export default function CelestialJump() {
     };
     platforms.push(platform);
     finalPlatform = platform;
+
+    // 移除离终局平台过近的普通平台，避免干扰
+    for (let i = platforms.length - 2; i >= 0; i--) {
+      const p = platforms[i];
+      if (Math.abs(p.y - finalY) < 160) {
+        const removed = platforms.splice(i, 1)[0];
+        icePlatforms.delete(removed);
+      }
+    }
   };
 
   const enterFinalMode = (platform) => {
@@ -1883,7 +1895,10 @@ export default function CelestialJump() {
         let tooClose = true;
         const newY = highestPlatformY - (70 + Math.random() * 30);
 
-        if (finalPlatform && newY <= finalPlatform.y - MIN_VERTICAL_GAP) {
+        if (
+          (finalPlatform && newY <= finalPlatform.y - MIN_VERTICAL_GAP) ||
+          (finalPlatform && Math.abs(newY - finalPlatform.y) < 160)
+        ) {
           platformGenerationEnabled = false;
         } else {
           while (tooClose && attempts < 60) {
@@ -1916,7 +1931,8 @@ export default function CelestialJump() {
         Math.random() > 0.99 &&
         platforms.length > 0 &&
         monsters.length < maxMonsters &&
-        platformGenerationEnabled
+        platformGenerationEnabled &&
+        currentScore < FINAL_SCORE_THRESHOLD
       ) {
         const highestY = platforms.reduce((min, p) => {
           if (p.isFinal) return min;
