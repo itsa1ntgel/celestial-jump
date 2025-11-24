@@ -497,6 +497,7 @@ const ASCII_TRIGGER_CHANCE = 0.1;
 const NAME_STORAGE_KEY = 'celestialJump_playerName';
 
 export default function CelestialJump() {
+  const boardRef = useRef(null);
   const canvasRef = useRef(null);
   const snowCanvasRef = useRef(null);
   const [score, setScore] = useState(0);
@@ -1186,19 +1187,19 @@ export default function CelestialJump() {
       rotationSpeed: 0.05
     };
 
-  const platforms = [];
-  const icePlatforms = new Set();
-  let cameraY = 0;
-  let currentScore = 0;
-  let platformGenerationEnabled = true;
-  let finalModeEnabled = false;
-  let finalCameraStarted = false;
-  let finalCameraSettled = false;
-  let finalPlatform = null;
-  let targetCameraY = 0;
-  let finalCameraShift = 0;
-  let selectedQuote = '';
-  let floatingTexts = [];
+    const platforms = [];
+    const icePlatforms = new Set();
+    let cameraY = 0;
+    let currentScore = 0;
+    let platformGenerationEnabled = true;
+    let finalModeEnabled = false;
+    let finalCameraStarted = false;
+    let finalCameraSettled = false;
+    let finalPlatform = null;
+    let targetCameraY = 0;
+    let finalCameraShift = 0;
+    let selectedQuote = '';
+    let floatingTexts = [];
 
   const isTooCloseToExistingPlatforms = (x, y) => {
     for (const p of platforms) {
