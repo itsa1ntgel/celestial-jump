@@ -1108,7 +1108,7 @@ export default function CelestialJump() {
       const rect = wrapper.getBoundingClientRect();
       const measuredWidth = rect.width || wrapper.clientWidth || 0;
       const measuredHeight = rect.height || 0;
-      if (!measuredWidth || !measuredHeight) {
+      if (!measuredWidth) {
         resizeAttempts += 1;
         if (resizeAttempts < 6) requestAnimationFrame(resizeCanvas);
         return;
