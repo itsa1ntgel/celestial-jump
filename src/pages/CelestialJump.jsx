@@ -653,10 +653,10 @@ export default function CelestialJump() {
     const BOARD_ASPECT = 9 / 16;
     const MIN_BOARD_HEIGHT = 520;
     const MAX_BOARD_HEIGHT = 600;
-    const DEBUG = true; // 开发阶段快速测试终局
+    const DEBUG = false; // 开发阶段快速测试终局
     const FINAL_SCORE = 50000;
     const FINAL_SCORE_THRESHOLD = FINAL_SCORE;
-    const FINAL_TEST_SCORE = 48000;
+    const FINAL_TEST_SCORE = 46000;
     const MIN_HORIZONTAL_GAP = 12;
     const MIN_VERTICAL_GAP = 35;
     const SPAWN_BUFFER_Y = -200;
