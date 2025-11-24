@@ -2564,11 +2564,22 @@ export default function CelestialJump() {
         </div>
 
         {/* 游戏画布 */}
-        <div className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4">
+        <div
+          ref={boardRef}
+          className="relative overflow-hidden rounded-[28px] border border-white/80 shadow-[0_22px_50px_rgba(15,23,42,0.18)] bg-gradient-to-b from-white via-white/95 to-[#eef3fb] backdrop-blur-xl mb-4"
+          style={{
+            aspectRatio: '9 / 16',
+            minHeight: '520px',
+            maxHeight: '600px',
+            maxWidth: '420px',
+            width: '100%',
+            marginLeft: 'auto',
+            marginRight: 'auto'
+          }}
+        >
           <canvas
             ref={canvasRef}
             className="w-full block"
-            style={{ height: 'clamp(520px, 68vh, 680px)' }}
           />
 
           {gameOver && (
